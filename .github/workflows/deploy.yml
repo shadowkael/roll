@@ -1,0 +1,58 @@
+name: Deploy Roll to Server
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Build Ink & vendor
+        run: npm ci && npm run build
+
+      - name: Upload static files
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          password: ${{ secrets.SSH_PASSWORD }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          source: "index.html,css,js,assets,ink"
+          target: ${{ secrets.DEPLOY_PATH || '/var/www/roll' }}
+          overwrite: true
+          rm: false
+
+      - name: Fix permissions & reload web server
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          password: ${{ secrets.SSH_PASSWORD }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          script: |
+            set -e
+            DEPLOY_PATH="${{ secrets.DEPLOY_PATH || '/var/www/roll' }}"
+            mkdir -p "$DEPLOY_PATH/css" "$DEPLOY_PATH/js/scenes" "$DEPLOY_PATH/js/vendor" "$DEPLOY_PATH/assets/bg" "$DEPLOY_PATH/ink"
+            chown -R nginx:nginx "$DEPLOY_PATH" 2>/dev/null || chown -R www-data:www-data "$DEPLOY_PATH" 2>/dev/null || true
+            chmod -R a+rX "$DEPLOY_PATH"
+            if command -v nginx >/dev/null 2>&1; then
+              nginx -t && systemctl reload nginx
+            elif command -v httpd >/dev/null 2>&1; then
+              apachectl configtest && systemctl reload httpd
+            fi
+            echo "Deployed to $DEPLOY_PATH — http://${{ secrets.SSH_HOST }}:8000/"

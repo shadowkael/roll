@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+  <meta name="description" content="Roll — 从「那个谁」到「有人」。大学军训篇互动叙事游戏。">
+  <title>Roll · 那个谁 · 军训篇</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="game-container">
+    <div id="sound-toggle"><span class="icon-on"></span></div>
+    <div id="establishing-shot">
+      <img id="es-img" src="" alt="">
+      <div class="es-title" id="es-title"></div>
+    </div>
+    <div id="explore-hint">
+      <div class="eyes-container"><div class="eye"></div><div class="eye"></div></div>
+      <span class="hint-countdown"></span>
+    </div>
+
+    <div id="game">
+      <div id="title-screen" class="scene active">
+        <h1>那个谁</h1>
+        <p class="subtitle">军 训 篇</p>
+        <button class="start-btn" id="start-btn">开 始</button>
+      </div>
+      <div id="opening-screen" class="scene"></div>
+      <div id="transition-screen" class="scene"></div>
+
+      <div id="scene1" class="scene">
+        <div class="scene-canvas">
+          <div class="s1-sun clickable" data-el="sun"></div>
+          <div class="s1-ground" data-el="ground"></div>
+          <div class="s1-instructor clickable" data-el="instructor">
+            <div class="head"></div><div class="body-line"></div><div class="arms"></div>
+            <div class="legs"><div class="leg-l"></div><div class="leg-r"></div></div>
+          </div>
+          <div class="s1-classmate clickable" data-el="classmate">
+            <div class="head" data-part="head"></div>
+            <div class="body-wrap" data-part="body">
+              <div class="body-line"></div>
+              <div class="arms"></div>
+              <div class="legs"><div class="leg-l"></div><div class="leg-r"></div></div>
+            </div>
+          </div>
+          <div class="s1-self clickable" data-el="self">
+            <div class="head"></div><div class="body-line"></div><div class="arms"></div>
+            <div class="legs"><div class="leg-l"></div><div class="leg-r"></div></div>
+          </div>
+          <div class="s1-bg-group clickable" data-el="bggroup">
+            <div class="s1-bg-figure"><div class="head"></div><div class="body-line"></div></div>
+            <div class="s1-bg-figure"><div class="head"></div><div class="body-line"></div></div>
+            <div class="s1-bg-figure"><div class="head"></div><div class="body-line"></div></div>
+          </div>
+          <div class="ant ant1"><div class="ant-body"></div><div class="ant-legs"></div></div>
+          <div class="ant ant2"><div class="ant-body"></div><div class="ant-legs"></div></div>
+          <div class="ant ant3"><div class="ant-body"></div><div class="ant-legs"></div></div>
+        </div>
+        <div class="bubble" id="bubble1"></div>
+        <div class="choices" id="choices1"></div>
+        <div class="narration" id="nar1"></div>
+      </div>
+
+      <div id="scene2" class="scene">
+        <div class="scene-canvas">
+          <div class="s2-enemy-group clickable" data-el="enemy">
+            <div style="display:flex;gap:12px">
+              <div class="s2-fig"><div class="hd"></div><div class="bd"></div></div>
+              <div class="s2-fig"><div class="hd"></div><div class="bd"></div></div>
+              <div class="s2-fig"><div class="hd"></div><div class="bd"></div></div>
+              <div class="s2-fig"><div class="hd"></div><div class="bd"></div></div>
+            </div>
+          </div>
+          <div class="s2-leader clickable" data-el="leader">
+            <div class="hd"></div><div class="bd"></div>
+          </div>
+          <div class="s2-tall-guy clickable" data-el="tallguy">
+            <div class="hd"></div><div class="bd"></div>
+          </div>
+          <div class="s2-self clickable" data-el="self2">
+            <div class="hd"></div><div class="bd"></div>
+          </div>
+          <div class="s2-roommate clickable" data-el="roommate2">
+            <div class="hd"></div><div class="bd"></div>
+          </div>
+        </div>
+        <div class="bubble" id="bubble2"></div>
+        <div class="choices" id="choices2"></div>
+        <div class="narration" id="nar2"></div>
+      </div>
+
+      <div id="scene3" class="scene">
+        <div class="scene-canvas">
+          <div class="s3-instructor clickable" data-el="inst3">
+            <div class="hd"></div><div class="bd"></div><div class="arms"></div>
+          </div>
+          <div class="s3-self clickable" data-el="self3">
+            <div class="hd"></div><div class="body-line"></div><div class="arms"></div>
+          </div>
+          <div class="s3-roommate clickable" data-el="room3">
+            <div class="hd"></div><div class="bd"></div>
+          </div>
+        </div>
+        <div class="bubble" id="bubble3"></div>
+        <div class="choices" id="choices3"></div>
+        <div class="narration" id="nar3"></div>
+      </div>
+
+      <div id="rhythm-game">
+        <div class="rhythm-char" id="rhythm-char">🚶</div>
+        <div class="rhythm-track" id="rhythm-track">
+          <div class="rhythm-hitzone"></div>
+        </div>
+        <div class="rhythm-progress"><div class="rhythm-progress-bar" id="rhythm-bar"></div></div>
+        <div class="rhythm-score">得分 <span class="count" id="rhythm-score-num">0</span> / 16 &nbsp; 连击 <span class="count" id="rhythm-combo">0</span></div>
+        <div class="rhythm-judgement" id="rhythm-judge"></div>
+        <div class="rhythm-tap-area" id="rhythm-tap">击!</div>
+      </div>
+
+      <div id="ending" class="scene"></div>
+    </div>
+  </div>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

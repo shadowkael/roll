@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Roll · 美术对齐工具</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:system-ui,sans-serif;background:#1a1a1a;color:#e8e0d4;min-height:100vh;display:flex;flex-direction:column}
+    header{padding:12px 16px;border-bottom:1px solid #333;display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+    header h1{font-size:1rem;font-weight:600;letter-spacing:.05em}
+    main{flex:1;display:flex;gap:0;overflow:hidden}
+    aside{width:280px;padding:12px;border-right:1px solid #333;overflow-y:auto;font-size:13px}
+    aside label{display:block;margin:10px 0 4px;color:#c4956a}
+    aside input[type=file],aside input[type=text],aside select{width:100%;font-size:12px}
+    aside button{margin-top:8px;width:100%;padding:8px;background:#c4956a;color:#1a1a1a;border:none;cursor:pointer;border-radius:4px}
+    aside button.secondary{background:#333;color:#e8e0d4}
+    aside pre{background:#111;padding:8px;font-size:10px;overflow:auto;max-height:200px;margin-top:8px}
+    #stage-wrap{flex:1;display:flex;align-items:center;justify-content:center;padding:16px;background:#111}
+    #stage{
+      position:relative;width:270px;height:480px;background:#2a2520;
+      background-size:cover;background-position:center;overflow:hidden;
+      border:1px solid #444;cursor:default;
+    }
+    .layer{
+      position:absolute;cursor:move;touch-action:none;
+      outline:1px dashed rgba(196,149,106,.5);
+    }
+    .layer img{width:100%;height:auto;display:block;pointer-events:none}
+    .layer.selected{outline:2px solid #c4956a}
+    .layer-label{
+      position:absolute;top:-16px;left:0;font-size:9px;color:#c4956a;
+      background:rgba(0,0,0,.6);padding:1px 4px;white-space:nowrap;
+    }
+    .hint{padding:8px 16px;font-size:12px;color:#888;border-top:1px solid #333}
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Roll · Scene1 对齐</h1>
+    <span style="font-size:12px;color:#888">画布 9:16 · 拖拽 SK · 导出 hotspots/scene1.json</span>
+  </header>
+  <main>
+    <aside>
+      <label>BG 底图</label>
+      <input type="file" id="bg-file" accept="image/*">
+      <label>选中图层</label>
+      <select id="layer-select"></select>
+      <label>上传 SK</label>
+      <input type="file" id="sk-file" accept="image/png,image/webp">
+      <label>图层 ID</label>
+      <input type="text" id="layer-id" placeholder="instructor / classmate / self">
+      <button type="button" id="add-layer">添加图层</button>
+      <label>Top %</label>
+      <input type="text" id="pos-top" value="40%">
+      <label>Left %</label>
+      <input type="text" id="pos-left" value="30%">
+      <label>Width %</label>
+      <input type="text" id="pos-width" value="20%">
+      <button type="button" id="apply-pos">应用到选中层</button>
+      <button type="button" id="export-json">导出 scene1.json</button>
+      <button type="button" class="secondary" id="load-json">加载现有 JSON</button>
+      <pre id="output"></pre>
+    </aside>
+    <div id="stage-wrap">
+      <div id="stage"></div>
+    </div>
+  </main>
+  <p class="hint">对齐完成后，将 JSON 复制到 assets/hotspots/scene1.json，图片放入 assets/bg/ 与 assets/sk/</p>
+  <script>
+    const stage = document.getElementById('stage');
+    const layers = [];
+    let selected = null;
+    let drag = null;
+
+    const defaultCfg = {
+      scene: 'scene1',
+      base: 'assets/bg/bg-1.jpg',
+      layers: [
+        { id: 'instructor', src: 'assets/sk/sk-4-stand.png', top: '28%', left: '8%', width: '22%', z: 2 },
+        { id: 'classmate', src: 'assets/sk/sk-1-sway.png', top: '42%', left: '50%', width: '20%', z: 3, animation: 'sway' },
+        { id: 'self', src: 'assets/sk/sk-5-stand-back.png', top: '44%', left: '32%', width: '20%', z: 4 }
+      ],
+      hotspots: [
+        { id: 'sun', el: 'sun', top: '6%', left: '68%', width: '22%', height: '16%' },
+        { id: 'ground', el: 'ground', top: '78%', left: '0%', width: '100%', height: '22%' },
+        { id: 'instructor', el: 'instructor', top: '24%', left: '4%', width: '26%', height: '38%' },
+        { id: 'classmate_head', el: 'classmate', part: 'head', top: '40%', left: '48%', width: '14%', height: '12%' },
+        { id: 'classmate_body', el: 'classmate', part: 'body', top: '50%', left: '46%', width: '22%', height: '28%' },
+        { id: 'self', el: 'self', top: '42%', left: '28%', width: '22%', height: '36%' },
+        { id: 'bggroup', el: 'bggroup', top: '38%', left: '72%', width: '26%', height: '30%' }
+      ]
+    };
+    let cfg = structuredClone(defaultCfg);
+
+    document.getElementById('bg-file').onchange = e => {
+      const f = e.target.files[0];
+      if (!f) return;
+      stage.style.backgroundImage = `url(${URL.createObjectURL(f)})`;
+    };
+
+    function renderLayer(layer, blobUrl) {
+      const el = document.createElement('div');
+      el.className = 'layer';
+      el.dataset.id = layer.id;
+      el.style.top = layer.top;
+      el.style.left = layer.left;
+      el.style.width = layer.width;
+      el.style.zIndex = layer.z || 1;
+      el.innerHTML = `<span class="layer-label">${layer.id}</span><img src="${blobUrl || layer.src}" alt="">`;
+      el.onmousedown = e => startDrag(e, el);
+      el.ontouchstart = e => startDrag(e.touches[0], el);
+      stage.appendChild(el);
+      layers.push({ layer, el, blobUrl });
+      refreshSelect();
+    }
+
+    function refreshSelect() {
+      const sel = document.getElementById('layer-select');
+      sel.innerHTML = layers.map(l => `<option value="${l.layer.id}">${l.layer.id}</option>`).join('');
+      if (selected) sel.value = selected.layer.id;
+    }
+
+    function selectLayer(id) {
+      layers.forEach(l => l.el.classList.toggle('selected', l.layer.id === id));
+      selected = layers.find(l => l.layer.id === id) || null;
+      if (selected) {
+        document.getElementById('pos-top').value = selected.layer.top;
+        document.getElementById('pos-left').value = selected.layer.left;
+        document.getElementById('pos-width').value = selected.layer.width;
+      }
+    }
+
+    document.getElementById('layer-select').onchange = e => selectLayer(e.target.value);
+
+    document.getElementById('add-layer').onclick = () => {
+      const f = document.getElementById('sk-file').files[0];
+      const id = document.getElementById('layer-id').value.trim() || `sk-${layers.length}`;
+      const top = document.getElementById('pos-top').value;
+      const left = document.getElementById('pos-left').value;
+      const width = document.getElementById('pos-width').value;
+      const layer = { id, src: `assets/sk/${id}.png`, top, left, width, z: layers.length + 2 };
+      cfg.layers.push(layer);
+      renderLayer(layer, f ? URL.createObjectURL(f) : null);
+      selectLayer(id);
+    };
+
+    document.getElementById('apply-pos').onclick = () => {
+      if (!selected) return;
+      selected.layer.top = document.getElementById('pos-top').value;
+      selected.layer.left = document.getElementById('pos-left').value;
+      selected.layer.width = document.getElementById('pos-width').value;
+      selected.el.style.top = selected.layer.top;
+      selected.el.style.left = selected.layer.left;
+      selected.el.style.width = selected.layer.width;
+    };
+
+    function startDrag(e, el) {
+      e.preventDefault();
+      selectLayer(el.dataset.id);
+      const rect = stage.getBoundingClientRect();
+      drag = { el, ox: e.clientX, oy: e.clientY, startL: el.offsetLeft, startT: el.offsetTop, rect };
+      document.onmousemove = moveDrag;
+      document.onmouseup = endDrag;
+      document.ontouchmove = ev => moveDrag(ev.touches[0]);
+      document.ontouchend = endDrag;
+    }
+
+    function moveDrag(e) {
+      if (!drag) return;
+      const dx = e.clientX - drag.ox;
+      const dy = e.clientY - drag.oy;
+      const left = drag.startL + dx;
+      const top = drag.startT + dy;
+      drag.el.style.left = `${(left / drag.rect.width) * 100}%`;
+      drag.el.style.top = `${(top / drag.rect.height) * 100}%`;
+      if (selected) {
+        selected.layer.left = drag.el.style.left;
+        selected.layer.top = drag.el.style.top;
+        document.getElementById('pos-top').value = selected.layer.top;
+        document.getElementById('pos-left').value = selected.layer.left;
+      }
+    }
+
+    function endDrag() {
+      drag = null;
+      document.onmousemove = null;
+      document.onmouseup = null;
+      document.ontouchmove = null;
+      document.ontouchend = null;
+    }
+
+    document.getElementById('export-json').onclick = () => {
+      cfg.layers = layers.map(l => l.layer);
+      const text = JSON.stringify(cfg, null, 2);
+      document.getElementById('output').textContent = text;
+      navigator.clipboard?.writeText(text);
+    };
+
+    document.getElementById('load-json').onclick = async () => {
+      try {
+        const res = await fetch('../assets/hotspots/scene1.json');
+        cfg = await res.json();
+        stage.innerHTML = '';
+        layers.length = 0;
+        cfg.layers.forEach(l => renderLayer(l));
+        stage.style.backgroundImage = cfg.base ? `url(../${cfg.base})` : '';
+      } catch (err) {
+        alert('加载失败，使用默认配置');
+        cfg = structuredClone(defaultCfg);
+      }
+    };
+
+    cfg.layers.forEach(l => renderLayer(l));
+  </script>
+</body>
+</html>

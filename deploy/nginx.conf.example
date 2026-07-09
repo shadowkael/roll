@@ -1,0 +1,24 @@
+# Roll 静态站点示例（Nginx）
+# 复制到服务器: /etc/nginx/conf.d/roll.conf
+# 然后: nginx -t && systemctl reload nginx
+
+server {
+    listen 8000;
+    server_name 139.224.30.109;
+
+    root /var/www/roll;
+    index index.html;
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    # ES Module 与静态资源缓存
+    location ~* \.(js|css|jpg|jpeg|png|webp|svg|ico|woff2?)$ {
+        expires 7d;
+        add_header Cache-Control "public, immutable";
+    }
+
+    gzip on;
+    gzip_types text/css application/javascript image/svg+xml;
+}

@@ -1,0 +1,278 @@
+
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#1a1a1a;--text:#e8e0d4;--accent:#c4956a;--dim:#666;--dimmer:#444}
+html,body{width:100%;height:100%;overflow:hidden;font-family:"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif}
+body{background:var(--bg);color:var(--text);-webkit-tap-highlight-color:transparent;user-select:none}
+#game{width:100%;height:100%;position:relative;overflow:hidden}
+.scene{position:absolute;top:0;left:0;width:100%;height:100%;display:none;flex-direction:column;align-items:center;justify-content:center;transition:opacity .6s}
+.scene.active{display:flex}
+.fade-in{animation:fadeIn .8s ease forwards}
+.fade-out{animation:fadeOut .8s ease forwards}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes fadeOut{from{opacity:1}to{opacity:0}}
+@keyframes typeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes pulse{0%,100%{opacity:.6}50%{opacity:1}}
+@keyframes sway{0%,100%{transform:rotate(-2deg)}50%{transform:rotate(2deg)}}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-3px)}75%{transform:translateX(3px)}}
+@keyframes sunPulse{0%,100%{transform:scale(1);opacity:.9}50%{transform:scale(1.08);opacity:1}}
+@keyframes walkCycle{0%{transform:translateY(0)}50%{transform:translateY(-4px)}100%{transform:translateY(0)}}
+
+/* ---- SOUND TOGGLE ---- */
+#sound-toggle{position:fixed;top:12px;right:12px;z-index:999;width:40px;height:40px;border-radius:50%;background:rgba(40,40,40,.8);border:1px solid var(--dimmer);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .25s;font-size:1.2em;line-height:1}
+#sound-toggle:hover{background:rgba(60,60,60,.9);border-color:var(--accent)}
+#sound-toggle .icon-on::before{content:'♪'}
+#sound-toggle .icon-off::before{content:'✕';color:#885544}
+#sound-toggle.muted{opacity:.5}
+
+/* ---- EXPLORE HINT ---- */
+#explore-hint{position:fixed;top:60px;left:12px;z-index:998;display:flex;align-items:center;gap:8px;opacity:0;pointer-events:none;transition:opacity .5s}
+#explore-hint.show{opacity:.6}
+#explore-hint.fade-out{opacity:0}
+#explore-hint .eyes-container{display:flex;gap:4px;align-items:center}
+#explore-hint .eye{width:12px;height:12px;border-radius:50%;background:var(--dim);position:relative;animation:blink 4s ease-in-out infinite}
+#explore-hint .eye:nth-child(2){animation-delay:.1s}
+#explore-hint .eye::after{content:'';position:absolute;width:5px;height:5px;background:var(--bg);border-radius:50%;top:3px;left:3.5px;animation:lookAround 5s ease-in-out infinite}
+#explore-hint .eye:nth-child(2)::after{animation-delay:.3s}
+#explore-hint .hint-countdown{font-size:.9em;color:var(--dim);min-width:22px;font-variant-numeric:tabular-nums}
+@keyframes blink{0%,93%,100%{transform:scaleY(1)}96%{transform:scaleY(.1)}}
+@keyframes lookAround{0%,100%{transform:translate(0,0)}20%{transform:translate(-2px,0)}40%{transform:translate(0,0)}60%{transform:translate(2px,0)}80%{transform:translate(0,0)}}
+
+/* ---- BREATHING HINT FOR INTERACTIVE ELEMENTS ---- */
+.scene-canvas [data-el]{animation:breathe 2.5s ease-in-out infinite}
+@keyframes breathe{0%,100%{opacity:.75}50%{opacity:1}}
+
+/* ---- TITLE SCREEN ---- */
+#title-screen{background:var(--bg);text-align:center}
+#title-screen h1{font-size:2.2em;color:var(--accent);letter-spacing:.15em;margin-bottom:.3em;font-weight:300}
+#title-screen .subtitle{font-size:1em;color:var(--dim);margin-bottom:1.5em;letter-spacing:.3em}
+#title-screen .start-btn{background:none;border:1px solid var(--accent);color:var(--accent);padding:12px 48px;font-size:1.1em;cursor:pointer;letter-spacing:.2em;border-radius:2px;transition:all .3s}
+#title-screen .start-btn:hover{background:var(--accent);color:var(--bg)}
+
+/* ---- OPENING TEXT ---- */
+#opening-screen{background:var(--bg);text-align:center;padding:2em;justify-content:flex-start;padding-top:12vh}
+#opening-screen p{font-size:1.1em;line-height:2.2;color:var(--text);opacity:0}
+#opening-screen p.show{animation:typeIn .8s ease forwards}
+
+/* ---- TRANSITION ---- */
+#transition-screen{background:var(--bg);text-align:center;padding:2em;justify-content:flex-start;padding-top:12vh}
+#transition-screen p{font-size:1.15em;line-height:2.4;color:var(--dim);opacity:0}
+#transition-screen p.show{animation:typeIn .6s ease forwards}
+
+/* ---- COMMON BUBBLE ---- */
+.bubble{position:absolute;background:rgba(50,50,50,.92);color:var(--text);padding:10px 16px;border-radius:12px;font-size:.85em;line-height:1.6;max-width:280px;text-align:center;pointer-events:none;opacity:0;transform:scale(.85);transition:all .35s;z-index:100;border:1px solid rgba(196,149,106,.25)}
+.bubble.show{opacity:1;transform:scale(1)}
+.bubble::after{content:'';position:absolute;bottom:-8px;left:50%;transform:translateX(-50%);border:4px solid transparent;border-top-color:rgba(50,50,50,.92)}
+
+/* ---- CHOICE OVERLAY ---- */
+.choices{position:absolute;bottom:8%;left:50%;transform:translateX(-50%);display:flex;flex-direction:row;gap:16px;z-index:200;opacity:0;transition:opacity .4s;flex-wrap:wrap;justify-content:center}
+.choices.show{opacity:1}
+.choices button{background:rgba(40,40,40,.95);border:1px solid var(--accent);color:var(--text);padding:10px 24px;font-size:.95em;cursor:pointer;border-radius:4px;min-width:140px;transition:all .25s;letter-spacing:.1em}
+.choices button:hover{background:var(--accent);color:var(--bg)}
+
+/* ---- NARRATION ---- */
+.narration{position:absolute;top:8%;left:50%;transform:translateX(-50%);width:80%;max-width:700px;text-align:center;font-size:.9em;color:var(--dim);line-height:1.8;z-index:150;opacity:0;transition:opacity .5s}
+.narration.show{opacity:1}
+
+/* ---- SCENE CANVAS ---- */
+.scene-canvas{position:relative;width:100%;height:100%;overflow:hidden}
+
+/* ========== SCENE 1 ========== */
+#scene1 .scene-canvas{background:linear-gradient(180deg,#2a2520 0%,#252520 35%,#3a3828 68%,#2e2c22 100%)}
+/* 远景建筑轮廓 */
+#scene1 .scene-canvas::before{content:'';position:absolute;bottom:28%;left:0;width:100%;height:30px;opacity:.35;background:linear-gradient(90deg,transparent 1%,#5a5548 1%,#5a5548 6%,transparent 6%,transparent 10%,#5a5548 10%,#5a5548 13%,transparent 13%,transparent 18%,#5a5548 18%,#5a5548 19%,transparent 19%,transparent 60%,#5a5548 60%,#5a5548 75%,transparent 75%,transparent 80%,#5a5548 80%,#5a5548 90%,transparent 90%)}
+/* 地平线 */
+#scene1 .scene-canvas::after{content:'';position:absolute;bottom:22%;left:0;width:100%;height:2px;background:rgba(196,149,106,.18)}
+/* 蚂蚁 */
+.ant{position:absolute;pointer-events:none}
+.ant-body{width:4px;height:3px;background:var(--dim);border-radius:50%;position:relative}
+.ant-body::before{content:'';position:absolute;width:3px;height:2.5px;background:var(--dim);border-radius:50%;left:-3.5px;top:0}
+.ant-legs{position:absolute;top:2px;left:-2px;width:10px;height:4px}
+.ant-legs::before{content:'';position:absolute;width:100%;height:100%;background:repeating-linear-gradient(90deg,transparent 0px,transparent 1.5px,var(--dim) 1.5px,var(--dim) 2px,transparent 2px,transparent 3.5px);opacity:.6}
+.ant1{bottom:14%;left:-5%;animation:antWalk1 18s linear infinite}
+.ant2{bottom:10%;left:-5%;animation:antWalk2 24s linear infinite 5s}
+.ant3{bottom:17%;left:-5%;animation:antWalk3 15s linear infinite 10s}
+@keyframes antWalk1{0%{transform:translateX(0)}100%{transform:translateX(calc(100vw + 20px))}}
+@keyframes antWalk2{0%{transform:translateX(0)}60%{transform:translateX(55vw)}62%{transform:translateX(55vw) translateY(-2px)}64%{transform:translateX(55vw) translateY(0)}100%{transform:translateX(calc(100vw + 20px))}}
+@keyframes antWalk3{0%{transform:translateX(0)}40%{transform:translateX(30vw)}42%{transform:translateX(30vw) rotate(8deg)}46%{transform:translateX(30vw) rotate(-5deg)}50%{transform:translateX(35vw) rotate(0deg)}100%{transform:translateX(calc(100vw + 20px))}}
+.s1-sun{position:absolute;top:12%;right:10%;width:60px;height:60px;border-radius:50%;background:radial-gradient(circle,#e8c87a,#c4956a);box-shadow:0 0 30px rgba(196,149,106,.4);animation:sunPulse 4s ease infinite;cursor:pointer}
+.s1-ground{position:absolute;bottom:0;left:0;width:100%;height:22%;background:linear-gradient(180deg,#3a3828,#2e2c22);cursor:pointer}
+.s1-ground::before{content:'';position:absolute;top:0;left:0;width:100%;height:2px;background:rgba(196,149,106,.15)}
+.s1-instructor{position:absolute;top:32%;left:12%;cursor:pointer}
+.s1-instructor .head{width:22px;height:22px;border-radius:50%;border:2px solid var(--dim);margin:0 auto}
+.s1-instructor .body-line{width:2px;height:36px;background:var(--dim);margin:0 auto}
+.s1-instructor .arms{width:32px;height:2px;background:var(--dim);margin:-28px auto 0;position:relative}
+.s1-instructor .legs{width:20px;height:2px;background:var(--dim);margin:22px auto 0}
+.s1-instructor .leg-l,.s1-instructor .leg-r{width:2px;height:20px;background:var(--dim);position:absolute;bottom:-20px}
+.s1-instructor .leg-l{left:2px}
+.s1-instructor .leg-r{right:2px}
+.s1-classmate{position:absolute;top:48%;left:55%;cursor:pointer}
+.s1-classmate .head{width:20px;height:20px;border-radius:50%;border:2px solid var(--dim);margin:0 auto;animation:classmateSwayHead 1.8s ease-in-out infinite}
+.s1-classmate .body-wrap{
+  animation:classmateSwayBody 1.8s ease-in-out infinite;
+  position:relative;
+  padding:10px 16px 6px;
+  margin:-10px -16px -6px;
+  cursor:pointer;
+}
+@keyframes classmateSwayHead{0%,100%{transform:rotate(-10deg) translateX(-3px)}30%{transform:rotate(8deg) translateX(4px)}60%{transform:rotate(-6deg) translateX(-2px)}85%{transform:rotate(12deg) translateX(5px)}}
+@keyframes classmateSwayBody{0%,100%{transform:rotate(-6deg) translateX(-2px)}30%{transform:rotate(5deg) translateX(3px)}60%{transform:rotate(-4deg) translateX(-1px)}85%{transform:rotate(8deg) translateX(4px)}}
+.s1-classmate .body-line{width:2px;height:32px;background:var(--dim);margin:0 auto}
+.s1-classmate .arms{width:24px;height:2px;background:var(--dim);margin:-24px auto 0}
+.s1-classmate .legs{display:flex;justify-content:center;gap:6px;margin-top:14px}
+.s1-classmate .leg-l,.s1-classmate .leg-r{width:2px;height:20px;background:var(--dim)}
+.s1-self{position:absolute;top:50%;left:38%;cursor:pointer}
+.s1-self .head{width:20px;height:20px;border-radius:50%;border:2px solid var(--accent);margin:0 auto}
+.s1-self .body-line{width:2px;height:32px;background:var(--accent);margin:0 auto}
+.s1-self .arms{width:24px;height:2px;background:var(--accent);margin:-24px auto 0}
+.s1-self .legs{display:flex;justify-content:center;gap:6px;margin-top:14px}
+.s1-self .leg-l,.s1-self .leg-r{width:2px;height:20px;background:var(--accent)}
+.s1-bg-group{position:absolute;top:45%;right:8%;display:flex;gap:14px;cursor:pointer;opacity:.4}
+.s1-bg-figure .head{width:14px;height:14px;border-radius:50%;border:1.5px solid var(--dim);margin:0 auto}
+.s1-bg-figure .body-line{width:1.5px;height:22px;background:var(--dim);margin:0 auto}
+
+/* ========== SCENE 2 ========== */
+#scene2 .scene-canvas{background:linear-gradient(180deg,#1e1c1a 0%,#22201e 30%,#252320 50%,#1e1e1a 100%)}
+/* 中间对战线 — 两排之间的分界 */
+#scene2 .scene-canvas::before{content:'';position:absolute;top:48%;left:3%;width:94%;height:2px;background:rgba(196,149,106,.15)}
+/* 地面弧线光 */
+#scene2 .scene-canvas::after{content:'';position:absolute;bottom:12%;left:50%;transform:translateX(-50%);width:70%;height:40px;border-bottom:1px solid rgba(196,149,106,.1);border-radius:0 0 50% 50%}
+.s2-fig{display:flex;flex-direction:column;align-items:center}
+.s2-fig .hd{width:16px;height:16px;border-radius:50%;border:1.5px solid var(--dim);margin-bottom:2px}
+.s2-fig .bd{width:1.5px;height:20px;background:var(--dim)}
+.s2-leader{position:absolute;top:50%;left:15%;cursor:pointer}
+.s2-leader .hd{width:22px;height:22px;border-radius:50%;border:2px solid var(--accent);margin:0 auto}
+.s2-leader .bd{width:2px;height:30px;background:var(--accent);margin:0 auto}
+.s2-tall-guy{position:absolute;top:48%;right:15%;cursor:pointer;opacity:.7}
+.s2-tall-guy .hd{width:20px;height:20px;border-radius:50%;border:2px solid var(--dim);margin:0 auto}
+.s2-tall-guy .bd{width:2px;height:40px;background:var(--dim);margin:0 auto}
+.s2-enemy-group{position:absolute;top:20%;left:50%;transform:translateX(-50%);cursor:pointer}
+.s2-self{position:absolute;bottom:28%;left:42%;cursor:pointer}
+.s2-self .hd{width:20px;height:20px;border-radius:50%;border:2px solid var(--accent);margin:0 auto}
+.s2-self .bd{width:2px;height:28px;background:var(--accent);margin:0 auto}
+.s2-roommate{position:absolute;bottom:28%;right:22%;cursor:pointer;opacity:.6}
+.s2-roommate .hd{width:16px;height:16px;border-radius:50%;border:1.5px solid var(--dim);margin:0 auto}
+.s2-roommate .bd{width:1.5px;height:22px;background:var(--dim);margin:0 auto}
+
+/* ========== SCENE 3 ========== */
+#scene3 .scene-canvas{background:linear-gradient(180deg,#1e1e1a 0%,#1a1a18 40%,#1c1c18 100%)}
+/* 两侧建筑/旗杆轮廓 */
+#scene3 .scene-canvas::before{content:'';position:absolute;top:5%;left:0;width:100%;height:50px;opacity:.25;background:linear-gradient(90deg,transparent 3%,#5a5a55 3%,#5a5a55 8%,transparent 8%,transparent 12%,#5a5a55 12%,#5a5a55 14%,transparent 14%,transparent 86%,#5a5a55 86%,#5a5a55 88%,transparent 88%,transparent 92%,#5a5a55 92%,#5a5a55 97%,transparent 97%)}
+/* 阅兵场地面线 */
+#scene3 .scene-canvas::after{content:'';position:absolute;bottom:28%;left:5%;width:90%;height:2px;background:rgba(196,149,106,.12)}
+.s3-instructor{position:absolute;top:20%;left:50%;transform:translateX(-50%);cursor:pointer}
+.s3-instructor .hd{width:26px;height:26px;border-radius:50%;border:2.5px solid var(--dim);margin:0 auto}
+.s3-instructor .bd{width:2.5px;height:40px;background:var(--dim);margin:0 auto}
+.s3-instructor .arms{width:40px;height:2px;background:var(--dim);margin:-30px auto 0}
+.s3-self{position:absolute;top:50%;left:50%;transform:translateX(-50%);cursor:pointer}
+.s3-self .hd{width:20px;height:20px;border-radius:50%;border:2px solid var(--accent);margin:0 auto}
+.s3-self .bd{width:2px;height:32px;background:var(--accent);margin:0 auto}
+.s3-self .arms{width:24px;height:2px;background:var(--accent);margin:-24px auto 0}
+.s3-roommate{position:absolute;top:52%;left:30%;cursor:pointer;opacity:.6}
+.s3-roommate .hd{width:16px;height:16px;border-radius:50%;border:1.5px solid var(--dim);margin:0 auto}
+.s3-roommate .bd{width:1.5px;height:24px;background:var(--dim);margin:0 auto}
+
+/* ---- RHYTHM GAME ---- */
+#rhythm-game{position:absolute;top:0;left:0;width:100%;height:100%;background:var(--bg);z-index:300;display:none;flex-direction:column;align-items:center}
+#rhythm-game.active{display:flex}
+.rhythm-track{position:relative;width:80%;max-width:700px;height:70px;margin-top:18%;border-bottom:2px solid var(--dimmer)}
+.rhythm-hitzone{position:absolute;bottom:-2px;left:18%;width:40px;height:6px;background:var(--accent);border-radius:3px}
+.rhythm-note{position:absolute;bottom:4px;width:18px;height:18px;border-radius:50%;background:var(--accent);opacity:.9;transition:opacity .15s}
+.rhythm-note.hit{opacity:0;transform:scale(1.5);transition:all .2s}
+.rhythm-score{text-align:center;margin-top:10px;font-size:.95em;color:var(--dim)}
+.rhythm-score .count{color:var(--accent);font-size:1.4em}
+.rhythm-judgement{position:absolute;top:35%;left:50%;transform:translate(-50%,-50%);font-size:1.8em;font-weight:bold;opacity:0;transition:all .3s;pointer-events:none;z-index:10}
+.rhythm-judgement.show{opacity:1}
+.rhythm-judgement.perfect{color:#e8c87a}
+.rhythm-judgement.good{color:var(--accent)}
+.rhythm-judgement.miss{color:#885544}
+.rhythm-tap-area{position:absolute;bottom:5%;right:8%;width:90px;height:90px;border-radius:50%;border:2px solid var(--accent);display:flex;align-items:center;justify-content:center;font-size:.85em;color:var(--dim);cursor:pointer;transition:all .15s}
+.rhythm-tap-area:active{background:rgba(196,149,106,.15);transform:scale(.95)}
+.rhythm-char{position:absolute;top:12%;left:12%;font-size:2.5em;animation:walkCycle 0.5s ease infinite}
+.rhythm-progress{width:80%;max-width:700px;height:6px;background:var(--dimmer);border-radius:3px;margin-top:12px;overflow:hidden}
+.rhythm-progress-bar{height:100%;background:var(--accent);width:0%;transition:width .3s}
+
+/* ---- ENDING ---- */
+#ending{background:var(--bg);text-align:center;padding:2em 4em;overflow-y:auto;justify-content:flex-start;padding-top:6vh}
+#ending .regret-line{font-size:1em;color:var(--dim);line-height:2;margin-bottom:1.2em;opacity:0}
+#ending .regret-line.show{animation:typeIn .8s ease forwards}
+#ending .reveal{font-size:.95em;color:var(--accent);line-height:2;margin:1.5em 0;opacity:0}
+#ending .reveal.show{animation:typeIn 1s ease forwards}
+#ending .end-title{font-size:1.8em;color:var(--accent);letter-spacing:.15em;margin:2em 0 .5em;opacity:0}
+#ending .end-title.show{animation:typeIn 1s ease forwards}
+#ending .end-sub{font-size:.9em;color:var(--dim);letter-spacing:.3em;margin-bottom:2em;opacity:0}
+#ending .end-sub.show{animation:typeIn 1s ease forwards}
+#ending .restart-btn{background:none;border:1px solid var(--accent);color:var(--accent);padding:12px 40px;font-size:1em;cursor:pointer;letter-spacing:.15em;border-radius:2px;transition:all .3s;opacity:0}
+#ending .restart-btn.show{opacity:1}
+#ending .restart-btn:hover{background:var(--accent);color:var(--bg)}
+
+/* ---- UTILS ---- */
+.clickable{cursor:pointer;transition:transform .2s}
+.clickable:hover{transform:scale(1.05)}
+.hidden{display:none!important}
+
+/* ---- ESTABLISHING SHOT ---- */
+#establishing-shot{position:fixed;top:0;left:0;width:100%;height:100%;z-index:500;background:#1a1a1a;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity 1s}
+#establishing-shot.show{opacity:1;pointer-events:auto}
+#establishing-shot img{width:100%;height:100%;object-fit:cover;position:absolute;top:0;left:0}
+#establishing-shot .es-title{position:relative;z-index:2;font-size:1.3em;color:var(--text);letter-spacing:.2em;text-shadow:0 2px 20px rgba(0,0,0,.8);opacity:0;transition:opacity 1.2s .5s}
+#establishing-shot.show .es-title{opacity:.85}
+
+/* ---- GAME CONTAINER ---- */
+#game-container{
+  position:fixed;top:0;left:0;
+  width:100vw;height:100vh;
+  overflow:hidden;
+  transform-origin:center center;
+  transition:transform .3s ease;
+}
+
+/* ---- ART MODE (BG + SK layers) ---- */
+.scene-canvas.art-mode{
+  background-color:#2a2520;
+}
+.scene-canvas.art-mode::before,
+.scene-canvas.art-mode::after{display:none!important}
+.scene-canvas .scene-layer{
+  position:absolute;
+  height:auto;
+  object-fit:contain;
+  pointer-events:none;
+  user-select:none;
+}
+.scene-canvas .scene-layer.layer-sway{
+  animation:layerSway 1.8s ease-in-out infinite;
+  transform-origin:50% 85%;
+}
+@keyframes layerSway{
+  0%,100%{transform:rotate(-4deg) translateX(-2px)}
+  50%{transform:rotate(4deg) translateX(3px)}
+}
+.scene-canvas.art-mode .s1-instructor .head,
+.scene-canvas.art-mode .s1-instructor .body-line,
+.scene-canvas.art-mode .s1-instructor .arms,
+.scene-canvas.art-mode .s1-instructor .legs,
+.scene-canvas.art-mode .s1-classmate .head,
+.scene-canvas.art-mode .s1-classmate .body-line,
+.scene-canvas.art-mode .s1-classmate .arms,
+.scene-canvas.art-mode .s1-classmate .legs,
+.scene-canvas.art-mode .s1-self .head,
+.scene-canvas.art-mode .s1-self .body-line,
+.scene-canvas.art-mode .s1-self .arms,
+.scene-canvas.art-mode .s1-self .legs,
+.scene-canvas.art-mode .s1-bg-figure .head,
+.scene-canvas.art-mode .s1-bg-figure .body-line{
+  opacity:0;
+  border-color:transparent;
+  background:transparent!important;
+  box-shadow:none;
+}
+.scene-canvas.art-mode .s1-sun{
+  background:transparent;
+  box-shadow:none;
+  border:1px dashed rgba(196,149,106,.25);
+}
+.scene-canvas.art-mode .s1-ground{
+  background:transparent;
+  border-top:1px dashed rgba(196,149,106,.15);
+}
+
