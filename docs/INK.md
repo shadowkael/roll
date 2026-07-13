@@ -57,10 +57,10 @@ npm run hooks:install
 | 标签 | 参数 | 作用 |
 |------|------|------|
 | `flow` | opening / transition | 切换开场/过场屏 |
-| `sfx` | opening / ding / thud / scene1_ambient | 音效 |
+| `sfx` | opening / ding / thud / scene1_ambient / scene2_ambient / scene3_ambient | 音效 |
 | `establish` | 图片 key | 定镜全屏（3s） |
 | `establish_title` | 标题文字 | 定镜标题 |
-| `scene` | scene1 | 进入场景 DOM |
+| `scene` | scene1 / scene2 / scene3 | 进入场景 DOM |
 | `explore_hint` | 秒数 | 探索倒计时 UI（默认 15s） |
 | `timeout` | 毫秒 | 超时未选择则跳转 |
 | `timeout_knot` | knot 名 | 超时目标（默认 s1_timeout） |
@@ -70,14 +70,14 @@ npm run hooks:install
 | `choices` | sceneId | 标记（选项由 inkjs 原生 choices 驱动） |
 | `clear_timers` | — | 清除 engine 定时器 |
 | `hide_explore_hint` | — | 隐藏探索提示 |
-| `handoff` | scene2 / … | 交给 JS 玩法模块 |
+| `handoff` | scene2 / rhythm / ending | 交给 JS 玩法模块（节奏、结算）；Scene2/3 叙事已在 Ink 内 |
 
 ## Ink 变量 ↔ `state.js`
 
 | Ink VAR | S 字段 |
 |---------|--------|
 | bold / support / quiet | S.tags.* |
-| s1_choice | S.s1Choice |
+| s1_choice / s2_choice / s3_choice | S.s1Choice / S.s2Choice / S.s3Choice |
 | bond_classmate | S.bonds.classmate |
 | click_* | 仅 Ink 内计数，不同步 |
 

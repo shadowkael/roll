@@ -70,6 +70,8 @@ export class InkRuntime {
     S.tags.support = Number(v('support')) || 0;
     S.tags.quiet = Number(v('quiet')) || 0;
     S.s1Choice = v('s1_choice') || null;
+    S.s2Choice = v('s2_choice') || null;
+    S.s3Choice = v('s3_choice') || null;
     if (!S.bonds) S.bonds = {};
     S.bonds.classmate = !!v('bond_classmate');
     saveProgress();

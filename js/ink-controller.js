@@ -1,38 +1,31 @@
 /**
- * Ink 标签与文本处理器
+ * Ink 标签与文本处理器（开场 / Scene1–3 同一管线）
  */
 import { inkRuntime, parseTag } from './ink-runtime.js';
 import { S, saveProgress } from './state.js';
-import { clearTimers, addTimer } from './engine.js';
+import { clearTimers } from './engine.js';
 import { NarSeq } from './narration.js';
 import { SFX } from './sfx.js';
 import {
   showBubble, showChoices, showExploreHint, hideExploreHint,
   switchScene, showEstablishingShot,
 } from './ui.js';
-import { initScene2 } from './scenes/scene2.js';
 import { bindScene1Hotspots } from './scenes/scene1-ink.js';
+import { bindScene2Hotspots } from './scenes/scene2-ink.js';
+import { bindScene3Hotspots } from './scenes/scene3-ink.js';
 import { mountSceneArt } from './scene-compositor.js';
+import { startRhythmGame } from './rhythm-game.js';
+import { showEnding } from './results.js';
 
-let scene1Timeout = null;
-let scene1HotspotsBound = false;
+let exploreTimeout = null;
 let pendingTimeoutKnot = 's1_timeout';
+const hotspotsBound = { scene1: false, scene2: false, scene3: false };
 
 export async function startGame() {
   SFX.init();
   if (!inkRuntime.loaded) await inkRuntime.load();
   else inkRuntime.reset();
   await advanceInk();
-}
-
-export async function processInkStep(step) {
-  for (const tag of step.tags) {
-    const stop = await handleTag(tag, step);
-    if (stop) return;
-  }
-  if (step.choices?.length) {
-    await waitForChoice(step.choices);
-  }
 }
 
 export async function advanceInk() {
@@ -74,6 +67,49 @@ function switchSceneAsync(id, cb) {
   });
 }
 
+function activeChoiceSceneId() {
+  const id = document.querySelector('.scene.active')?.id;
+  if (id === 'scene2') return 2;
+  if (id === 'scene3') return 3;
+  return 1;
+}
+
+function narrationSceneId(tags = []) {
+  const sceneTag = tags.find(t => t.startsWith('scene:'));
+  if (sceneTag === 'scene:scene2') return 2;
+  if (sceneTag === 'scene:scene3') return 3;
+  if (sceneTag === 'scene:scene1') return 1;
+  const active = document.querySelector('.scene.active')?.id;
+  if (active === 'scene2') return 2;
+  if (active === 'scene3') return 3;
+  if (active === 'scene1') return 1;
+  return 1;
+}
+
+function hasSceneChoice(sceneNum) {
+  if (sceneNum === 2) return !!(S.s2Choice || inkRuntime.getVar('s2_choice'));
+  if (sceneNum === 3) return !!(S.s3Choice || inkRuntime.getVar('s3_choice'));
+  return !!(S.s1Choice || inkRuntime.getVar('s1_choice'));
+}
+
+async function enterScene(sceneId) {
+  await switchSceneAsync(sceneId, async () => {
+    await mountSceneArt(sceneId);
+    if (sceneId === 'scene1' && !hotspotsBound.scene1) {
+      bindScene1Hotspots(onInkHotspot);
+      hotspotsBound.scene1 = true;
+    }
+    if (sceneId === 'scene2' && !hotspotsBound.scene2) {
+      bindScene2Hotspots(onInkHotspot);
+      hotspotsBound.scene2 = true;
+    }
+    if (sceneId === 'scene3' && !hotspotsBound.scene3) {
+      bindScene3Hotspots(onInkHotspot);
+      hotspotsBound.scene3 = true;
+    }
+  });
+}
+
 async function handleTag(tag, step) {
   const { key, args } = parseTag(tag);
   const text = step.texts[0] || '';
@@ -95,6 +131,8 @@ async function handleTag(tag, step) {
       else if (args[0] === 'thud') SFX.thud();
       else if (args[0] === 'opening') SFX.opening();
       else if (args[0] === 'scene1_ambient') SFX.scene1Ambient();
+      else if (args[0] === 'scene2_ambient') SFX.scene2Ambient();
+      else if (args[0] === 'scene3_ambient') SFX.scene3Ambient();
       return false;
     case 'establish':
       return await new Promise(resolve => {
@@ -105,14 +143,8 @@ async function handleTag(tag, step) {
         });
       });
     case 'scene':
-      if (args[0] === 'scene1') {
-        switchScene('scene1', async () => {
-          await mountSceneArt('scene1');
-          if (!scene1HotspotsBound) {
-            bindScene1Hotspots(onScene1Hotspot);
-            scene1HotspotsBound = true;
-          }
-        });
+      if (args[0] === 'scene1' || args[0] === 'scene2' || args[0] === 'scene3') {
+        await enterScene(args[0]);
       }
       return false;
     case 'explore_hint':
@@ -121,25 +153,28 @@ async function handleTag(tag, step) {
     case 'timeout_knot':
       pendingTimeoutKnot = args.join(':') || 's1_timeout';
       return false;
-    case 'timeout':
-      if (scene1Timeout) clearTimeout(scene1Timeout);
-      scene1Timeout = setTimeout(() => {
-        const chosen = S.s1Choice || inkRuntime.getVar('s1_choice');
-        if (!chosen) {
+    case 'timeout': {
+      if (exploreTimeout) clearTimeout(exploreTimeout);
+      const ms = Number(args[0]) || 45000;
+      const knot = pendingTimeoutKnot;
+      exploreTimeout = setTimeout(() => {
+        const sceneNum = activeChoiceSceneId();
+        if (!hasSceneChoice(sceneNum)) {
           hideExploreHint();
-          inkRuntime.jump(pendingTimeoutKnot);
+          inkRuntime.jump(knot);
           advanceInk();
         }
-      }, Number(args[0]) || 45000);
+      }, ms);
       return false;
+    }
     case 'narration':
       if (text) {
-        await narrationPromise(Number(args[0]) || 1, text);
+        await narrationPromise(Number(args[0]) || narrationSceneId(step.tags), text);
       }
       return false;
     case 'narration_seq':
       if (text) {
-        await narrationPromise(Number(args[0]) || 1, text);
+        await narrationPromise(Number(args[0]) || narrationSceneId(step.tags), text);
         await advanceInk();
         return true;
       }
@@ -151,19 +186,24 @@ async function handleTag(tag, step) {
       return false;
     case 'clear_timers':
       clearTimers();
-      if (scene1Timeout) { clearTimeout(scene1Timeout); scene1Timeout = null; }
+      if (exploreTimeout) { clearTimeout(exploreTimeout); exploreTimeout = null; }
       return false;
     case 'hide_explore_hint':
       hideExploreHint();
       return false;
     case 'handoff':
-      if (args[0] === 'scene2') {
-        inkRuntime.syncFromInk();
-        switchScene('scene2', () => initScene2());
-        saveProgress();
+      inkRuntime.syncFromInk();
+      saveProgress();
+      if (args[0] === 'rhythm') {
+        startRhythmGame();
         return true;
       }
-      return false;
+      if (args[0] === 'ending') {
+        showEnding();
+        return true;
+      }
+      // legacy: scene2 handoff no longer used
+      return true;
     default:
       return false;
   }
@@ -189,13 +229,11 @@ async function showNarrationLine(text, tags) {
     await narrationPromise('transition', text);
     return;
   }
-  if (tags.some(t => t.startsWith('scene:scene1')) || active?.id === 'scene1') {
-    await narrationPromise(1, text);
-  }
+  await narrationPromise(narrationSceneId(tags), text);
 }
 
 function waitForChoice(options) {
-  const sceneId = 1;
+  const sceneId = activeChoiceSceneId();
   return new Promise(resolve => {
     showChoices(sceneId, options, idx => {
       inkRuntime.choose(idx);
@@ -204,7 +242,7 @@ function waitForChoice(options) {
   });
 }
 
-async function onScene1Hotspot(knot) {
+async function onInkHotspot(knot) {
   inkRuntime.jump(knot);
   await advanceInk();
 }

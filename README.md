@@ -41,8 +41,10 @@ roll/
 │   └── scenes/
 │       ├── scene1-ink.js   # Scene1 热区 → Ink
 │       ├── scene1.js       # 旧版（保留参考）
-│       ├── scene2.js       # 拉歌对唱
-│       └── scene3.js       # 领队选拔
+│       ├── scene2-ink.js   # Scene2 热区 → Ink
+│       ├── scene2.js       # 旧版（已弃用）
+│       ├── scene3-ink.js   # Scene3 热区 → Ink
+│       └── scene3.js       # 旧版（已弃用）
 ├── assets/bg/              # Gemini 渲染场景图
 └── POC/                    # 原始 POC 材料（设计文档 + 原型）
 ```
@@ -57,7 +59,7 @@ roll/
 ## 技术栈
 
 - HTML5 + CSS3 + Vanilla JavaScript（ES Modules）
-- **Ink + inkjs** — 开场与 Scene1 叙事；Scene2/3 仍用 JS（逐步迁移）
+- **Ink + inkjs** — 军训篇开场与 Scene1–3 叙事；节奏游戏 / 结算仍用 JS（`# handoff`）
 - Web Audio API 合成音效
 - localStorage 进度存档
 - 静态部署（Netlify / Vercel / GitHub Pages）
