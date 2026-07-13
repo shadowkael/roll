@@ -101,3 +101,4 @@ curl -sI http://139.224.30.109:8000/assets/bg/bg-1.jpg
 | Actions SCP 失败 | 检查私钥全文是否完整、用户名、22 端口、安全组 |
 | 本机 SSH 失败 | 检查 `SSH_KEY_PATH`、`chmod 600` 私钥权限 |
 | 403 / 404 | 确认 `DEPLOY_PATH` 与 Nginx `root` 一致 |
+| 开始无响应 / `ink.mjs` MIME 为 `octet-stream` | Nginx 未识别 `.mjs`；部署脚本会写入 `default_type application/javascript`，也可手动 `reload` |

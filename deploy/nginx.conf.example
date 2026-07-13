@@ -9,12 +9,18 @@ server {
     root /var/www/roll;
     index index.html;
 
+    # .mjs 必须是 JS MIME，否则浏览器拒绝加载 ES module
+    location ~* \.mjs$ {
+        default_type application/javascript;
+        add_header Cache-Control "public, max-age=604800";
+    }
+
     location / {
         try_files $uri $uri/ /index.html;
     }
 
     # ES Module 与静态资源缓存
-    location ~* \.(js|css|jpg|jpeg|png|webp|svg|ico|woff2?)$ {
+    location ~* \.(js|mjs|css|jpg|jpeg|png|webp|svg|ico|woff2?)$ {
         expires 7d;
         add_header Cache-Control "public, immutable";
     }

@@ -56,6 +56,30 @@ jobs:
             chown -R nginx:nginx "$DEPLOY_PATH" 2>/dev/null || chown -R www-data:www-data "$DEPLOY_PATH" 2>/dev/null || true
             chmod -R a+rX "$DEPLOY_PATH"
             if command -v nginx >/dev/null 2>&1; then
+              # Browsers reject ES modules served as application/octet-stream
+              if [ -f /etc/nginx/mime.types ] && ! grep -qE 'application/javascript[[:space:]]+.*mjs' /etc/nginx/mime.types; then
+                sed -i -E 's|(application/javascript[[:space:]]+)js;|\1js mjs;|' /etc/nginx/mime.types || true
+              fi
+              printf '%s\n' \
+                'server {' \
+                '    listen 8000;' \
+                '    server_name _;' \
+                "    root ${DEPLOY_PATH};" \
+                '    index index.html;' \
+                '    location ~* \.mjs$ {' \
+                '        default_type application/javascript;' \
+                '        add_header Cache-Control "public, max-age=604800";' \
+                '    }' \
+                '    location / {' \
+                '        try_files $uri $uri/ /index.html;' \
+                '    }' \
+                '    location ~* \.(js|mjs|css|jpg|jpeg|png|webp|svg|ico|woff2?)$ {' \
+                '        expires 7d;' \
+                '        add_header Cache-Control "public, immutable";' \
+                '    }' \
+                '    gzip on;' \
+                '    gzip_types text/css application/javascript image/svg+xml;' \
+                '}' > /etc/nginx/conf.d/roll.conf
               nginx -t && systemctl reload nginx
             elif command -v httpd >/dev/null 2>&1; then
               apachectl configtest && systemctl reload httpd
