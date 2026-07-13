@@ -23,10 +23,10 @@ jobs:
           cache: npm
 
       - name: Build Ink & vendor
-        # omit optional native addons (ssh2/cpu-features); not needed for static build
+        # omit optional native addons (ssh2/cpu-features); not needed for static build.
+        # inklecate has no Linux binary — ink:build keeps committed ink/military.json on Ubuntu.
         run: |
           npm ci --omit=optional
-          chmod +x node_modules/inklecate/bin/inklecate || true
           npm run build
 
       - name: Upload static files
