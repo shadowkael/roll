@@ -32,6 +32,18 @@ npm run ink:watch      # 监听 .ink 变更并重新编译
 
 Linux CI 无法运行 inklecate；若只改了 `.ink` 却未更新上述文件，`npm run ink:check` 会失败。
 
+### 提交前检查（pre-commit）
+
+`npm install` / `npm prepare` 会把本仓库的 `githooks/` 设为 `core.hooksPath`。之后每次 `git commit` 自动跑 `ink:check`；不一致则拒绝提交。
+
+手动启用：
+
+```bash
+npm run hooks:install
+```
+
+临时跳过（不推荐）：`git commit --no-verify`
+
 ## 运行时流程
 
 1. 玩家点击「开始」→ `startGame()` 加载 `ink/military.json`

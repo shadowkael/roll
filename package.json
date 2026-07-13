@@ -15,6 +15,8 @@
     "predev": "npm run ink:build && npm run vendor:ink",
     "dev": "npx serve -l 3000",
     "build": "npm run ink:build && npm run vendor:ink",
+    "prepare": "node scripts/install-git-hooks.mjs",
+    "hooks:install": "node scripts/install-git-hooks.mjs",
     "deploy:remote": "node scripts/deploy-remote.mjs",
     "test": "npm run ink:check"
   },

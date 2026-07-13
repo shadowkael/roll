@@ -1,0 +1,11 @@
+#!/bin/sh
+# Fail the commit if stories/military.ink drifted from ink/military.sha256.
+set -e
+cd "$(git rev-parse --show-toplevel)" || exit 1
+
+if [ ! -f package.json ]; then
+  exit 0
+fi
+
+echo "==> pre-commit: npm run ink:check"
+npm run ink:check
