@@ -42,9 +42,10 @@ ssh -i ./roll_deploy -o IdentitiesOnly=yes root@139.224.30.109 "echo OK"
 | `SSH_HOST` | `139.224.30.109` | 是 |
 | `SSH_USERNAME` | `root` | 是 |
 | `SSH_PRIVATE_KEY` | `roll_deploy` **私钥全文**（含 `BEGIN`/`END` 行） | 是 |
-| `SSH_PASSPHRASE` | 私钥口令；无口令则不要创建此 Secret | 否 |
 | `SSH_PORT` | SSH 端口，默认 `22` | 否 |
 | `DEPLOY_PATH` | 部署目录，默认 `/var/www/roll` | 否 |
+
+若私钥带口令，在 workflow 的 `key` 旁自行加回 `passphrase: ${{ secrets.SSH_PASSPHRASE }}`；无口令时**不要**创建空的 `SSH_PASSPHRASE` Secret。
 
 > 旧的 `SSH_PASSWORD` 已不再使用，可删除。私钥只放在 Secrets，不要提交到 Git。
 
