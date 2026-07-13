@@ -9,13 +9,14 @@
   },
   "scripts": {
     "ink:build": "node scripts/ink-build.mjs",
+    "ink:check": "node scripts/ink-check.mjs",
     "ink:watch": "inklecate -w -o ink/military.json stories/military.ink",
     "vendor:ink": "node scripts/copy-vendor-ink.mjs",
     "predev": "npm run ink:build && npm run vendor:ink",
     "dev": "npx serve -l 3000",
     "build": "npm run ink:build && npm run vendor:ink",
     "deploy:remote": "node scripts/deploy-remote.mjs",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "npm run ink:check"
   },
   "repository": {
     "type": "git",

@@ -28,6 +28,7 @@ jobs:
         run: |
           npm ci --omit=optional
           npm run build
+          npm run ink:check
 
       - name: Upload static files
         uses: appleboy/scp-action@v0.1.7

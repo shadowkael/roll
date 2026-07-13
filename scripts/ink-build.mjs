@@ -1,8 +1,9 @@
-import { chmodSync, existsSync, mkdirSync, writeFileSync } from 'fs';
+import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import { spawn } from 'child_process';
 import { createRequire } from 'module';
+import { writeInkHash } from './ink-hash.mjs';
 
 const require = createRequire(import.meta.url);
 const getBinDir = require('inklecate/getBinDir');
@@ -64,12 +65,13 @@ try {
   const noise = String(rawOut || '')
     .replace(/^\uFEFF/, '')
     .trim();
-  const { readFileSync } = await import('fs');
   const compiled = readFileSync(out, 'utf8').replace(/^\uFEFF/, '').trim();
   const storyContent = JSON.parse(compiled);
   writeFileSync(out, JSON.stringify(storyContent), 'utf8');
+  const digest = writeInkHash(input);
   if (noise) console.log(noise);
   console.log('Built', out);
+  console.log('Stamp', digest);
 } catch (err) {
   console.error(err.message || err);
   process.exit(1);
