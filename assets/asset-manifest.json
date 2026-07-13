@@ -1,8 +1,8 @@
 {
   "version": 1,
-  "canvas": { "width": 1080, "height": 1920, "aspect": "9:16" },
+  "canvas": { "width": 1920, "height": 1080, "aspect": "16:9" },
   "export": {
-    "bg": { "format": "jpg", "quality": 85, "maxWidth": 1080 },
+    "bg": { "format": "jpg", "quality": 85, "maxWidth": 1920 },
     "sk": { "format": "png", "transparent": true, "maxHeight": 1200 }
   },
   "assets": [
@@ -11,24 +11,24 @@
       "file": "assets/bg/bg-1.jpg",
       "scene": "scene1",
       "priority": "P0",
-      "status": "pending",
-      "notes": "站军姿操场空镜，无人"
+      "status": "done",
+      "notes": "站军姿操场空镜，无人 · 横屏 16:9"
     },
     {
       "id": "BG-1-opening",
       "file": "assets/bg/opening.jpg",
       "scene": "establishing",
       "priority": "P0",
-      "status": "pending",
-      "notes": "可与 BG-1 同源或裁切，用于定镜「九月·操场」"
+      "status": "done",
+      "notes": "与 BG-1 同源横屏，定镜「九月·操场」"
     },
     {
       "id": "SK-1a",
       "file": "assets/sk/sk-1-sway.png",
       "scene": "scene1",
       "priority": "P0",
-      "status": "pending",
-      "notes": "摇晃同学 · 姿态①"
+      "status": "done",
+      "notes": "摇晃同学 · 姿态① · 参考附件1，摆幅略收"
     },
     {
       "id": "SK-1b",
@@ -43,15 +43,15 @@
       "file": "assets/sk/sk-4-stand.png",
       "scene": "scene1",
       "priority": "P0",
-      "status": "pending",
-      "notes": "教官背手巡视"
+      "status": "done",
+      "notes": "教官背手巡视 · 用户选定附件2"
     },
     {
       "id": "SK-5",
       "file": "assets/sk/sk-5-stand-back.png",
       "scene": "scene1",
       "priority": "P0",
-      "status": "pending",
+      "status": "done",
       "notes": "主角背站"
     },
     {

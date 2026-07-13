@@ -14,7 +14,7 @@
 5. scene-compositor.js 叠层 + 热区点击（后续替换 CSS 简笔画）
 ```
 
-无需 Figma；Gemini / Midjourney / SD 等通过**复制 Prompt** 使用，Cursor 不能直连生图 API。
+无需 Figma；Gemini / Midjourney / SD 等通过**复制 Prompt** 使用（Cursor 内也可按 Prompt 包生图）。
 
 ---
 
@@ -30,7 +30,7 @@
 | P1 | SK-2 / SK-3 | 排长、高个 |
 | P2 | FX-1～3 | 章末揭面 |
 
-尺寸：**1080×1920** 竖屏。
+尺寸：背景 / 场景定镜 **1920×1080（16:9）横屏**；角色 SK 透明底立绘（单人竖构图即可）。
 
 ---
 
@@ -44,7 +44,7 @@ Golden sunlight from upper right, long shadows on gray ground.
 Running track edge, simple campus buildings in soft focus background.
 Empty scene, NO people, NO characters.
 Warm yellow-orange nostalgic grade, slight desaturation, subtle film grain.
-Vertical composition 9:16, documentary photography style.
+Horizontal composition 16:9 landscape, documentary photography style.
 No fantasy, no anime, no 3D render, no toy texture.
 ```
 

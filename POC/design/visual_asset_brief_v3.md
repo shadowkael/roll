@@ -48,9 +48,9 @@
 
 | 编号 | 场景 | 描述 | 尺寸 |
 |------|------|------|------|
-| BG-1 | 站军姿 | 夏日上午操场，阳光自右上，塑胶/水泥地面，远景跑道与教学楼，**无人** | 1080×1920 |
-| BG-2 | 拉歌休息 | 同场低角度，地面纹理清晰，远处模糊人影可省略，**无清晰人物** | 1080×1920 |
-| BG-3 | 领队选拔 | 方阵视角，前方为空地（教官位），两侧远景队列虚化，午后长影 | 1080×1920 |
+| BG-1 | 站军姿 | 夏日上午操场，阳光自右上，塑胶/水泥地面，远景跑道与教学楼，**无人** | 1920×1080（16:9） |
+| BG-2 | 拉歌休息 | 同场低角度，地面纹理清晰，远处模糊人影可省略，**无清晰人物** | 1920×1080（16:9） |
+| BG-3 | 领队选拔 | 方阵视角，前方为空地（教官位），两侧远景队列虚化，午后长影 | 1920×1080（16:9） |
 
 可选：**BG-1b / 2b / 3b** 共 6 张「选择后果」状态底图（整图切换，见方案 C）。
 
@@ -100,7 +100,7 @@ subtle film grain, soft shadows.
 Empty scene, NO people, NO characters.
 Realistic plastic track or concrete parade ground,
 distant teaching buildings and trees.
-Vertical composition 9:16, documentary style.
+Horizontal composition 16:9 landscape widescreen, documentary style.
 No fantasy, no anime, no 3D render, no toy texture.
 ```
 
@@ -109,9 +109,9 @@ No fantasy, no anime, no 3D render, no toy texture.
 ```
 Photorealistic Chinese university parade ground, early September morning.
 Golden sunlight from upper right, long shadows on gray ground.
-Running track edge, simple campus buildings in soft focus background.
+Running track edge, simple beige campus buildings in soft focus background.
 Empty, no people. Warm yellow-orange nostalgic grade, slight desaturation.
-Vertical 9:16, documentary photography style.
+Horizontal 16:9 landscape, documentary photography style.
 ```
 
 ### 4.2 手绘角色（透明底）
