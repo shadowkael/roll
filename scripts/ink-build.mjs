@@ -13,8 +13,11 @@ const input = join(root, 'stories/military.ink');
 mkdirSync(dirname(out), { recursive: true });
 
 const result = await inklecate({ inputFilepath: input, outputFilepath: out });
-if (result.compilerOutput?.length) {
-  console.error(result.compilerOutput.join('\n'));
+const compilerNoise = (result.compilerOutput || [])
+  .map((line) => String(line).replace(/^\uFEFF/, '').trim())
+  .filter(Boolean);
+if (compilerNoise.length) {
+  console.error(compilerNoise.join('\n'));
   process.exit(1);
 }
 writeFileSync(out, JSON.stringify(result.storyContent), 'utf8');

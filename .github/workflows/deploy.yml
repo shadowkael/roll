@@ -23,7 +23,11 @@ jobs:
           cache: npm
 
       - name: Build Ink & vendor
-        run: npm ci && npm run build
+        # omit optional native addons (ssh2/cpu-features); not needed for static build
+        run: |
+          npm ci --omit=optional
+          chmod +x node_modules/inklecate/bin/inklecate || true
+          npm run build
 
       - name: Upload static files
         uses: appleboy/scp-action@v0.1.7

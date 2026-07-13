@@ -3,7 +3,6 @@ scripts/_extracted/
 
 # 依赖
 node_modules/
-package-lock.json
 
 # 环境变量与密钥
 .env
