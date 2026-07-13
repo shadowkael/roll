@@ -77,18 +77,18 @@
       scene: 'scene1',
       base: 'assets/bg/bg-1.jpg',
       layers: [
-        { id: 'instructor', src: 'assets/sk/sk-4-stand.png', top: '22%', left: '6%', width: '14%', z: 2 },
-        { id: 'classmate', src: 'assets/sk/sk-1-sway.png', top: '28%', left: '52%', width: '12%', z: 3, animation: 'sway' },
-        { id: 'self', src: 'assets/sk/sk-5-stand-back.png', top: '30%', left: '34%', width: '12%', z: 4 }
+        { id: 'instructor', src: 'assets/sk/sk-4-stand.png', bottom: '6%', left: '7%', width: '11%', z: 2 },
+        { id: 'classmate', src: 'assets/sk/sk-1-sway.png', bottom: '5%', left: '54%', width: '10%', z: 3, animation: 'sway' },
+        { id: 'self', src: 'assets/sk/sk-5-stand-back.png', bottom: '5%', left: '34%', width: '10%', z: 4 }
       ],
       hotspots: [
-        { id: 'sun', el: 'sun', top: '4%', left: '72%', width: '18%', height: '22%' },
-        { id: 'ground', el: 'ground', top: '78%', left: '0%', width: '100%', height: '22%' },
-        { id: 'instructor', el: 'instructor', top: '20%', left: '4%', width: '18%', height: '55%' },
-        { id: 'classmate_head', el: 'classmate', part: 'head', top: '26%', left: '52%', width: '10%', height: '14%' },
-        { id: 'classmate_body', el: 'classmate', part: 'body', top: '40%', left: '50%', width: '14%', height: '38%' },
-        { id: 'self', el: 'self', top: '28%', left: '32%', width: '14%', height: '50%' },
-        { id: 'bggroup', el: 'bggroup', top: '30%', left: '78%', width: '18%', height: '40%' }
+        { id: 'sun', el: 'sun', top: '2%', left: '78%', width: '16%', height: '28%', z: 25 },
+        { id: 'ground', el: 'ground', top: '78%', left: '0%', width: '100%', height: '22%', z: 15 },
+        { id: 'instructor', el: 'instructor', top: '28%', left: '5%', width: '15%', height: '66%', z: 30 },
+        { id: 'classmate_head', el: 'classmate', part: 'head', top: '48%', left: '55%', width: '9%', height: '14%', z: 32 },
+        { id: 'classmate_body', el: 'classmate', part: 'body', top: '62%', left: '53%', width: '12%', height: '33%', z: 31 },
+        { id: 'self', el: 'self', top: '42%', left: '32%', width: '14%', height: '53%', z: 30 },
+        { id: 'bggroup', el: 'bggroup', top: '40%', left: '78%', width: '18%', height: '48%', z: 20 }
       ]
     };
     let cfg = structuredClone(defaultCfg);
@@ -103,8 +103,10 @@
       const el = document.createElement('div');
       el.className = 'layer';
       el.dataset.id = layer.id;
-      el.style.top = layer.top;
-      el.style.left = layer.left;
+      if (layer.top != null) el.style.top = layer.top;
+      if (layer.bottom != null) el.style.bottom = layer.bottom;
+      if (layer.left != null) el.style.left = layer.left;
+      if (layer.right != null) el.style.right = layer.right;
       el.style.width = layer.width;
       el.style.zIndex = layer.z || 1;
       el.innerHTML = `<span class="layer-label">${layer.id}</span><img src="${blobUrl || layer.src}" alt="">`;

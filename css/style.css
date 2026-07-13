@@ -275,4 +275,12 @@ body{background:var(--bg);color:var(--text);-webkit-tap-highlight-color:transpar
   background:transparent;
   border-top:1px dashed rgba(196,149,106,.15);
 }
+.scene-canvas .scene-hotspot{
+  position:absolute;
+  box-sizing:border-box;
+}
+.scene-canvas.debug-hotspots .scene-hotspot{
+  outline:1px dashed rgba(196,149,106,.7);
+  background:rgba(196,149,106,.08);
+}
 

@@ -1,5 +1,5 @@
 /**
- * 场景美术合成：BG 底图 + SK 叠层；资产缺失时保留 CSS 线框
+ * 场景美术合成：BG 底图 + SK 叠层 + JSON 热区；资产缺失时保留 CSS 线框
  */
 
 const _loaded = new Map();
@@ -31,7 +31,7 @@ export async function mountSceneArt(sceneId) {
     return false;
   }
 
-  canvas.querySelectorAll('.scene-layer').forEach(el => el.remove());
+  canvas.querySelectorAll('.scene-layer, .scene-hotspot').forEach(el => el.remove());
 
   let hasBg = false;
   if (cfg.base) {
@@ -51,7 +51,7 @@ export async function mountSceneArt(sceneId) {
     img.src = layer.src;
     img.alt = '';
     img.draggable = false;
-    applyLayerStyle(img, layer);
+    applyBoxStyle(img, layer);
     if (layer.animation === 'sway') img.classList.add('layer-sway');
     canvas.insertBefore(img, canvas.firstChild);
     layerCount++;
@@ -59,20 +59,47 @@ export async function mountSceneArt(sceneId) {
 
   const artMode = hasBg || layerCount > 0;
   canvas.classList.toggle('art-mode', artMode);
+  if (artMode) {
+    applyHotspots(canvas, cfg.hotspots);
+    if (new URLSearchParams(location.search).has('debugHotspots')) {
+      canvas.classList.add('debug-hotspots');
+    }
+  }
   return artMode;
 }
 
-function applyLayerStyle(el, layer) {
+function applyBoxStyle(el, box) {
   el.style.position = 'absolute';
-  el.style.zIndex = layer.z ?? 1;
+  el.style.zIndex = String(box.z ?? 1);
   el.style.pointerEvents = 'none';
   el.style.height = 'auto';
-  if (layer.top != null) el.style.top = layer.top;
-  if (layer.left != null) el.style.left = layer.left;
-  if (layer.right != null) el.style.right = layer.right;
-  if (layer.bottom != null) el.style.bottom = layer.bottom;
-  if (layer.width != null) el.style.width = layer.width;
-  if (layer.opacity != null) el.style.opacity = layer.opacity;
+  el.style.top = box.top != null ? box.top : '';
+  el.style.left = box.left != null ? box.left : '';
+  el.style.right = box.right != null ? box.right : '';
+  el.style.bottom = box.bottom != null ? box.bottom : '';
+  if (box.width != null) el.style.width = box.width;
+  if (box.height != null) el.style.height = box.height;
+  if (box.opacity != null) el.style.opacity = String(box.opacity);
+}
+
+/** Invisible hit targets from hotspots JSON — source of truth in art mode. */
+function applyHotspots(canvas, hotspots) {
+  canvas.querySelectorAll('[data-el]:not(.scene-hotspot)').forEach(el => {
+    el.style.pointerEvents = 'none';
+  });
+
+  for (const hs of hotspots || []) {
+    if (!hs.el) continue;
+    const box = document.createElement('div');
+    box.className = 'scene-hotspot clickable';
+    box.dataset.el = hs.el;
+    if (hs.part) box.dataset.part = hs.part;
+    box.setAttribute('aria-hidden', 'true');
+    applyBoxStyle(box, { ...hs, z: hs.z ?? 30 });
+    box.style.pointerEvents = 'auto';
+    box.style.height = hs.height || 'auto';
+    canvas.appendChild(box);
+  }
 }
 
 export async function getAssetStatus() {
