@@ -5,36 +5,36 @@
     {
       "id": "instructor",
       "src": "assets/sk/sk-4-stand.png",
-      "bottom": "6%",
-      "left": "7%",
-      "width": "11%",
+      "bottom": "42%",
+      "left": "20%",
+      "width": "5.5%",
       "z": 2
     },
     {
       "id": "classmate",
       "src": "assets/sk/sk-1-sway.png",
-      "bottom": "5%",
-      "left": "54%",
-      "width": "10%",
+      "bottom": "4%",
+      "left": "47%",
+      "width": "18.5%",
       "z": 3,
       "animation": "sway"
     },
     {
       "id": "self",
       "src": "assets/sk/sk-5-stand-back.png",
-      "bottom": "5%",
+      "bottom": "4%",
       "left": "34%",
-      "width": "10%",
+      "width": "12%",
       "z": 4
     }
   ],
   "hotspots": [
     { "id": "sun", "el": "sun", "top": "2%", "left": "78%", "width": "16%", "height": "28%", "z": 25 },
     { "id": "ground", "el": "ground", "top": "78%", "left": "0%", "width": "100%", "height": "22%", "z": 15 },
-    { "id": "instructor", "el": "instructor", "top": "28%", "left": "5%", "width": "15%", "height": "66%", "z": 30 },
-    { "id": "classmate_head", "el": "classmate", "part": "head", "top": "48%", "left": "55%", "width": "9%", "height": "14%", "z": 32 },
-    { "id": "classmate_body", "el": "classmate", "part": "body", "top": "62%", "left": "53%", "width": "12%", "height": "33%", "z": 31 },
-    { "id": "self", "el": "self", "top": "42%", "left": "32%", "width": "14%", "height": "53%", "z": 30 },
-    { "id": "bggroup", "el": "bggroup", "top": "40%", "left": "78%", "width": "18%", "height": "48%", "z": 20 }
+    { "id": "instructor", "el": "instructor", "top": "30%", "left": "17%", "width": "11%", "height": "36%", "z": 30 },
+    { "id": "classmate_head", "el": "classmate", "part": "head", "top": "38%", "left": "51%", "width": "12%", "height": "16%", "z": 32 },
+    { "id": "classmate_body", "el": "classmate", "part": "body", "top": "52%", "left": "48%", "width": "16%", "height": "44%", "z": 31 },
+    { "id": "self", "el": "self", "top": "40%", "left": "32%", "width": "16%", "height": "56%", "z": 30 },
+    { "id": "bggroup", "el": "bggroup", "top": "36%", "left": "72%", "width": "20%", "height": "48%", "z": 20 }
   ]
 }
