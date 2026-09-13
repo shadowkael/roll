@@ -1,104 +1,72 @@
-# GitHub Actions 部署指南
+# 《那个谁》构建与部署
 
-通过 push 到 `main` 分支自动将静态文件部署到公网服务器。
+当前军训篇使用浏览器原生 ES 模块和 Canvas 2D。`npm run build` 只输出游戏运行需要的 `dist/`，本机部署与 GitHub Actions 均上传这个完整目录。旧 Ink 编译、vendor 拷贝和 Git 安装 hooks 已退出构建流程。
 
-## 认证方式
+## 本地运行与检查
 
-服务器当前只开放 **公钥登录**（密码登录会被拒绝），因此 Actions 与本机部署都使用 SSH 私钥。
-
-| 场景 | 方式 |
-|------|------|
-| **GitHub Actions** | Secrets 中的 `SSH_PRIVATE_KEY`（私钥全文） |
-| **本机手动部署** | `SSH_KEY_PATH` 指向 `.pem` / 私钥文件 |
-
-## 1. 生成部署专用密钥（推荐）
-
-在本机生成一对**无口令**密钥（专供 CI，勿复用个人日常密钥）：
+需要 Node.js 22 或更新版本；CI 使用 Node.js 24。
 
 ```bash
-ssh-keygen -t ed25519 -C "github-actions-roll-deploy" -f ./roll_deploy -N ""
+npm ci --omit=optional
+npm run dev
 ```
 
-把**公钥**写入服务器：
+打开 http://127.0.0.1:3000/。端口被占用时运行 `npm run dev -- --port 3001`。开发服务器仅监听本机地址，提供 `/src/` 模块和 `public/` 中的公开资源；不会把整个仓库开放给浏览器。
 
 ```bash
-ssh -i /path/to/existing_admin.pem root@139.224.30.109 \
-  "mkdir -p ~/.ssh && chmod 700 ~/.ssh && cat >> ~/.ssh/authorized_keys" < ./roll_deploy.pub
-ssh -i /path/to/existing_admin.pem root@139.224.30.109 "chmod 600 ~/.ssh/authorized_keys"
-```
-
-验证新密钥：
-
-```bash
-ssh -i ./roll_deploy -o IdentitiesOnly=yes root@139.224.30.109 "echo OK"
-```
-
-## 2. 配置 GitHub Secrets
-
-仓库 **Settings → Secrets and variables → Actions → New repository secret**：
-
-| Secret 名称 | 值 | 必填 |
-|-------------|-----|------|
-| `SSH_HOST` | `139.224.30.109` | 是 |
-| `SSH_USERNAME` | `root` | 是 |
-| `SSH_PRIVATE_KEY` | `roll_deploy` **私钥全文**（含 `BEGIN`/`END` 行） | 是 |
-| `SSH_PORT` | SSH 端口，默认 `22` | 否 |
-| `DEPLOY_PATH` | 部署目录，默认 `/var/www/roll` | 否 |
-
-若私钥带口令，在 workflow 的 `key` 旁自行加回 `passphrase: ${{ secrets.SSH_PASSPHRASE }}`；无口令时**不要**创建空的 `SSH_PASSPHRASE` Secret。
-
-> 旧的 `SSH_PASSWORD` 已不再使用，可删除。私钥只放在 Secrets，不要提交到 Git。
-
-### 使用 GitHub CLI（可选）
-
-```bash
-gh auth login
-gh secret set SSH_HOST -b"139.224.30.109"
-gh secret set SSH_USERNAME -b"root"
-gh secret set SSH_PRIVATE_KEY < ./roll_deploy
-gh secret set DEPLOY_PATH -b"/var/www/roll"
-```
-
-## 3. 本机手动部署
-
-```bash
-export SSH_KEY_PATH="/path/to/roll_deploy"   # 或 asus_cursor.pem
-export SSH_USERNAME=root
+npm test
 npm run build
+```
+
+构建结果为 `dist/index.html`、`dist/src/`、`dist/art/` 等。`public/` 内容直接复制到 `dist/` 根目录。构建不压缩、改写模块导入路径；Nginx 对所有文件设置 `Cache-Control: no-cache`，浏览器每次访问均重新验证缓存。不要对这些固定文件名配置 `immutable` 或七天强缓存。
+
+## 现有站点与认证
+
+沿用当前站点 http://139.224.30.109:8000/，默认站点目录 `/var/www/roll`。云安全组需要开放 HTTP 8000；部署通道使用 SSH 22。SSH 服务器使用公钥认证；私钥不得提交到仓库或输出到日志。
+
+GitHub 仓库的 Settings → Secrets and variables → Actions 中保留以下配置：
+
+- `SSH_HOST`：现有服务器地址。
+- `SSH_USERNAME`：现有部署账号，当前为 `root`。
+- `SSH_PRIVATE_KEY`：部署私钥全文。
+- `SSH_PORT`：可选，默认 `22`。
+- `DEPLOY_PATH`：可选，默认 `/var/www/roll`。使用规范绝对路径，至少含两级目录，不含空格、引号、`.` 或 `..` 路径段。
+
+若使用带口令的私钥，可在 Actions 的 `key` 参数旁增加 `passphrase: ${{ secrets.SSH_PASSPHRASE }}`，并配置相应 Secret。
+
+## 本机手动部署
+
+沿用已配置的 SSH 私钥和账号，确认本地测试通过后执行：
+
+```bash
+export SSH_KEY_PATH="/path/to/your/deploy-key"
+export SSH_USERNAME="root"
+# 如需覆盖默认值：export SSH_HOST="your-existing-host"
+# 如需覆盖默认值：export DEPLOY_PATH="/var/www/roll"
+npm test
 npm run deploy:remote
 ```
 
-## 4. 开放云服务器安全组
+也可用 `SSH_PRIVATE_KEY` 提供密钥内容。脚本会重新构建 `dist/`，上传全部构建文件，再安装或检查 Nginx，写入 `/etc/nginx/conf.d/roll.conf` 并验证、重载配置。Nginx 的 `root` 始终替换为同一个 `DEPLOY_PATH`，不会发生上传路径与站点目录不一致。
 
-| 端口 | 用途 |
-|------|------|
-| 22 | SSH 部署 |
-| 8000 | HTTP 访问 |
+该命令会修改远端站点；仅在准备发布时运行。上传使用覆盖方式，不递归删除远端目录。旧版本多余文件可能留存，但入口只引用当前构建；如需清理旧文件，应单独核对待删除清单。
 
-## 5. 触发部署
+## GitHub Actions 自动部署
 
-```bash
-git push origin main
-```
+推送到 `main` 或手动运行 “Deploy Roll to Server” 时，工作流依次执行依赖安装、全部测试、构建与上传。SCP 来源为 `dist/*`，使用 `strip_components: 1`，因此服务器收到的是 `index.html`、`src/`、`art/`，而不是额外嵌套的 `dist/`。
 
-或 **Actions → Deploy Roll to Server → Run workflow**。
+CI 需要服务器已安装 Nginx，部署账号有写入站点目录与 `/etc/nginx/conf.d/roll.conf`、重载 Nginx 的权限。第一次部署使用上面的 `npm run deploy:remote` 完成初始化；过时的独立初始化脚本已经移除，避免多套配置出现差异。
 
-## 6. 验证
+CI 不删除远端目录，也不会上传 `.git`、私钥、环境变量、文档或旧版工程。
 
-**http://139.224.30.109:8000/**
-
-确认新资产存在，例如：
+## 验证与排查
 
 ```bash
-curl -sI http://139.224.30.109:8000/assets/bg/bg-1.jpg
+curl -I http://139.224.30.109:8000/
+curl -I http://139.224.30.109:8000/src/main.mjs
+curl -I http://139.224.30.109:8000/src/styles.css
 ```
 
-## 故障排查
+入口应返回 200；模块的 `Content-Type` 应为 `application/javascript`，样式应为 `text/css`，所有响应应包含 `Cache-Control: no-cache`。如果收到 404，检查上传是否误嵌套了一层 `dist`；如果模块被浏览器拒绝，检查是否加载了当前 Nginx 配置。
 
-| 问题 | 处理 |
-|------|------|
-| `unable to authenticate` / `attempted methods [none]` | 服务器禁用了密码登录；改用 `SSH_PRIVATE_KEY`，并确认公钥已在服务器 `authorized_keys` |
-| Actions SCP 失败 | 检查私钥全文是否完整、用户名、22 端口、安全组 |
-| 本机 SSH 失败 | 检查 `SSH_KEY_PATH`、`chmod 600` 私钥权限 |
-| 403 / 404 | 确认 `DEPLOY_PATH` 与 Nginx `root` 一致 |
-| 开始无响应 / `ink.mjs` MIME 为 `octet-stream` | Nginx 未识别 `.mjs`；部署脚本会写入 `default_type application/javascript`，也可手动 `reload` |
+出现认证错误时检查私钥完整性、账号和服务器 `authorized_keys`。出现 403 时检查站点父目录是否允许 Nginx 访问，以及构建文件是否可读。Nginx 重载失败时先执行 `nginx -t` 查看具体原因。

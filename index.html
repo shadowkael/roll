@@ -1,127 +1,38 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-CN">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
-  <meta name="description" content="Roll — 从「那个谁」到「有人」。大学军训篇互动叙事游戏。">
-  <title>Roll · 那个谁 · 军训篇</title>
-  <link rel="stylesheet" href="css/style.css">
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f4f1e7"><meta name="description" content="在一个随时间运转的校园里，慢慢认识那些曾经模糊的人。那个谁 · 军训篇。">
+  <title>那个谁 — 九月，我们还不认识</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg"><link rel="stylesheet" href="/src/styles.css">
 </head>
 <body>
-  <div id="game-container">
-    <div id="sound-toggle"><span class="icon-on"></span></div>
-    <div id="establishing-shot">
-      <img id="es-img" src="" alt="">
-      <div class="es-title" id="es-title"></div>
-    </div>
-    <div id="explore-hint">
-      <div class="eyes-container"><div class="eye"></div><div class="eye"></div></div>
-      <span class="hint-countdown"></span>
-    </div>
-
-    <div id="game">
-      <div id="title-screen" class="scene active">
-        <h1>那个谁</h1>
-        <p class="subtitle">军 训 篇</p>
-        <button class="start-btn" id="start-btn">开 始</button>
-      </div>
-      <div id="opening-screen" class="scene"></div>
-      <div id="transition-screen" class="scene"></div>
-
-      <div id="scene1" class="scene">
-        <div class="scene-canvas">
-          <div class="s1-sun clickable" data-el="sun"></div>
-          <div class="s1-ground" data-el="ground"></div>
-          <div class="s1-instructor clickable" data-el="instructor">
-            <div class="head"></div><div class="body-line"></div><div class="arms"></div>
-            <div class="legs"><div class="leg-l"></div><div class="leg-r"></div></div>
-          </div>
-          <div class="s1-classmate clickable" data-el="classmate">
-            <div class="head" data-part="head"></div>
-            <div class="body-wrap" data-part="body">
-              <div class="body-line"></div>
-              <div class="arms"></div>
-              <div class="legs"><div class="leg-l"></div><div class="leg-r"></div></div>
-            </div>
-          </div>
-          <div class="s1-self clickable" data-el="self">
-            <div class="head"></div><div class="body-line"></div><div class="arms"></div>
-            <div class="legs"><div class="leg-l"></div><div class="leg-r"></div></div>
-          </div>
-          <div class="s1-bg-group clickable" data-el="bggroup">
-            <div class="s1-bg-figure"><div class="head"></div><div class="body-line"></div></div>
-            <div class="s1-bg-figure"><div class="head"></div><div class="body-line"></div></div>
-            <div class="s1-bg-figure"><div class="head"></div><div class="body-line"></div></div>
-          </div>
-          <div class="ant ant1"><div class="ant-body"></div><div class="ant-legs"></div></div>
-          <div class="ant ant2"><div class="ant-body"></div><div class="ant-legs"></div></div>
-          <div class="ant ant3"><div class="ant-body"></div><div class="ant-legs"></div></div>
-        </div>
-        <div class="bubble" id="bubble1"></div>
-        <div class="choices" id="choices1"></div>
-        <div class="narration" id="nar1"></div>
-      </div>
-
-      <div id="scene2" class="scene">
-        <div class="scene-canvas">
-          <div class="s2-enemy-group clickable" data-el="enemy">
-            <div style="display:flex;gap:12px">
-              <div class="s2-fig"><div class="hd"></div><div class="bd"></div></div>
-              <div class="s2-fig"><div class="hd"></div><div class="bd"></div></div>
-              <div class="s2-fig"><div class="hd"></div><div class="bd"></div></div>
-              <div class="s2-fig"><div class="hd"></div><div class="bd"></div></div>
-            </div>
-          </div>
-          <div class="s2-leader clickable" data-el="leader">
-            <div class="hd"></div><div class="bd"></div>
-          </div>
-          <div class="s2-tall-guy clickable" data-el="tallguy">
-            <div class="hd"></div><div class="bd"></div>
-          </div>
-          <div class="s2-self clickable" data-el="self2">
-            <div class="hd"></div><div class="bd"></div>
-          </div>
-          <div class="s2-roommate clickable" data-el="roommate2">
-            <div class="hd"></div><div class="bd"></div>
-          </div>
-        </div>
-        <div class="bubble" id="bubble2"></div>
-        <div class="choices" id="choices2"></div>
-        <div class="narration" id="nar2"></div>
-      </div>
-
-      <div id="scene3" class="scene">
-        <div class="scene-canvas">
-          <div class="s3-instructor clickable" data-el="inst3">
-            <div class="hd"></div><div class="bd"></div><div class="arms"></div>
-          </div>
-          <div class="s3-self clickable" data-el="self3">
-            <div class="hd"></div><div class="body-line"></div><div class="arms"></div>
-          </div>
-          <div class="s3-roommate clickable" data-el="room3">
-            <div class="hd"></div><div class="bd"></div>
-          </div>
-        </div>
-        <div class="bubble" id="bubble3"></div>
-        <div class="choices" id="choices3"></div>
-        <div class="narration" id="nar3"></div>
-      </div>
-
-      <div id="rhythm-game">
-        <div class="rhythm-char" id="rhythm-char">🚶</div>
-        <div class="rhythm-track" id="rhythm-track">
-          <div class="rhythm-hitzone"></div>
-        </div>
-        <div class="rhythm-progress"><div class="rhythm-progress-bar" id="rhythm-bar"></div></div>
-        <div class="rhythm-score">得分 <span class="count" id="rhythm-score-num">0</span> / 16 &nbsp; 连击 <span class="count" id="rhythm-combo">0</span></div>
-        <div class="rhythm-judgement" id="rhythm-judge"></div>
-        <div class="rhythm-tap-area" id="rhythm-tap">击!</div>
-      </div>
-
-      <div id="ending" class="scene"></div>
-    </div>
+  <div id="app">
+    <header class="masthead">
+      <a class="wordmark" href="#" data-action="home" aria-label="那个谁，返回扉页">那个谁<span class="wordmark-dot"></span></a>
+      <span class="chapter-name">第一章 <i></i> 九月，我们还不认识</span>
+      <nav class="top-actions" aria-label="游戏工具">
+        <button data-action="schedule" aria-label="查看日程"><span data-icon="calendar"></span><span>日程</span></button>
+        <button data-action="journal" aria-label="打开记忆手册"><span data-icon="book"></span><span>手册</span><i id="memory-dot" hidden></i></button>
+        <button class="icon-only" data-action="sound" aria-label="开启声音"><span id="sound-icon" data-icon="sound-off"></span></button>
+        <button class="icon-only" data-action="settings" aria-label="设置与暂停"><span data-icon="settings"></span></button>
+      </nav>
+    </header>
+    <main id="game-stage" aria-label="校园探索">
+      <canvas id="campus" tabindex="0" aria-label="校园地图。方向键或 WASD 移动，E 键与附近人物互动，也可点击地图行走。"></canvas>
+      <div class="clock-panel"><div class="clock-date"><span id="date-label">九月一日</span><span id="day-label">入学日</span></div><div class="clock-time"><span id="time-label">15:20</span><span id="weather-icon" data-icon="sun"></span></div><div class="clock-caption"><span class="live-dot"></span><span id="clock-caption">校园的时间，正在慢慢向前</span></div></div>
+      <button id="agenda-peek" class="agenda-peek" data-action="schedule"><span class="small-label">接下来</span><strong id="next-event-label">在校园里走一走</strong><span data-icon="arrow-right"></span></button>
+      <div class="map-caption"><span class="map-kicker">校园一隅</span><span id="location-label">宿舍前的小路</span><span class="map-coordinate" id="map-coordinate">AUTUMN / 01</span></div>
+      <div id="notification" class="notification" role="status" aria-live="polite"></div>
+      <div id="navigation-hint" class="navigation-hint" hidden><span data-icon="footsteps"></span><span></span><button data-action="cancel-walk" aria-label="取消前往">×</button></div>
+      <div class="map-tools"><button data-action="zoom-in" aria-label="放大地图">+</button><button data-action="zoom-out" aria-label="缩小地图">−</button><button data-action="recenter" aria-label="回到我的位置"><span data-icon="locate"></span></button></div>
+      <div class="game-dock"><button data-action="places"><span data-icon="map"></span><span>去哪里</span></button><span class="dock-divider"></span><button id="interact-button" class="interact-button" data-action="interact" disabled><span data-icon="talk"></span><span>走近一点，认识一下</span><kbd>E</kbd></button><span class="dock-divider"></span><button data-action="wait"><span data-icon="clock"></span><span>等一会儿</span></button></div>
+      <div class="movement-help"><span class="desktop-help">方向键 / WASD 行走 <b>·</b> 点击地面前往 <b>·</b> 拖动画面环顾</span><span class="mobile-help">点击地面行走 · 拖动画面环顾</span></div>
+      <div id="dialogue-root"></div>
+    </main>
+    <div id="overlay-root"></div><div id="title-root"></div><div id="fatal-error" hidden role="alert"></div>
   </div>
-
-  <script type="module" src="js/app.js"></script>
+  <noscript>「那个谁」需要浏览器开启 JavaScript 才能进入校园。</noscript>
+  <script type="module" src="/src/main.mjs"></script>
 </body>
 </html>

@@ -1,117 +1,77 @@
-# Roll
+# 那个谁
 
-**从「那个谁」到「有人」——大学四年的互动叙事游戏。**
+**九月，我们还不认识。**
 
-军训篇试玩版：探索式交互 + 跨场景标签 + 节奏游戏 + 揭面结算。
+一款以大学生活为背景的实时探索游戏。你以留白的主角走进校园，在日程之间安排自己的去处，通过相遇和选择，逐渐认识那些最初面容模糊的人。
 
-## 当前状态与交接
+当前版本实现了**九月一日至五日的完整军训篇**：入学领衣、站军姿、拉歌、领队选拔与结营，穿插四位人物的十二段个人经历。中文名已确定为「那个谁」，英文名待定；`roll` 是仓库和 npm 包的内部名称。
 
-持续更新的切片交接见 **[HANDOFF.md](./HANDOFF.md)**（目标 / 已完成 / 进行中 / 决策 / 已知问题 / 验收 / 下一步）。
+## 开始游玩
 
-约定：**每完成一个可交付切片，必须更新 `HANDOFF.md`**，使代码状态、交接说明与验收标准三者对齐。Agent 侧规则见 `.cursor/rules/handoff.mdc`。
-
-线上试玩：**http://139.224.30.109:8000/**
-
-## 快速开始
+需要 Node.js 22 或更新版本。
 
 ```bash
-npm install
-npm run build    # 编译 Ink（若本机有 inklecate）+ 复制 inkjs
-npm test         # ink:check — 源与编译戳一致
-npm run dev      # http://localhost:3000
+npm ci --omit=optional
+npm run dev
 ```
 
-浏览器**横屏**体验最佳。
+打开 [本地游戏](http://127.0.0.1:3000/)。端口被占用时运行：
 
-| 用途 | 地址 |
-|------|------|
-| 游戏 | http://localhost:3000/ |
-| Scene1 图层对齐 | http://localhost:3000/tools/art-align.html |
-| 热区调试 | http://localhost:3000/?debugHotspots=1 |
-
-叙事：`docs/INK.md` · 美术：`docs/ART_WORKFLOW.md` · 部署：`DEPLOY.md`
-
-## 项目结构
-
-```
-roll/
-├── HANDOFF.md              # 切片交接（持续更新）
-├── index.html              # 入口
-├── css/style.css           # 全局样式
-├── stories/military.ink    # Ink 源剧本
-├── ink/military.json       # 编译产物（需提交）
-├── ink/military.sha256     # 与源一致性戳（CI / pre-commit）
-├── docs/INK.md             # Ink 集成说明
-├── docs/ART_WORKFLOW.md    # PS 热区 + AI 生图流程
-├── DEPLOY.md               # GitHub Actions / SSH 部署
-├── assets/
-│   ├── bg/                 # 场景底图（16:9）
-│   ├── sk/                 # 角色叠层
-│   └── hotspots/           # 图层 + 热区 JSON（art-mode 数据源）
-├── tools/art-align.html    # 本地百分比对齐工具
-├── js/
-│   ├── app.js              # 入口
-│   ├── scene-compositor.js # BG/SK + 热区合成
-│   ├── ink-game.js         # startGame()
-│   ├── ink-controller.js   # Ink 标签 / advanceInk / handoff
-│   ├── ink-runtime.js      # Story 加载与变量同步
-│   ├── vendor/ink.mjs      # inkjs 浏览器 bundle
-│   ├── state.js            # 状态管理 + localStorage
-│   ├── engine.js           # 定时器引擎
-│   ├── narration.js        # 打字机旁白
-│   ├── sfx.js              # Web Audio 音效
-│   ├── ui.js               # UI 辅助函数
-│   ├── rhythm-game.js      # 节奏游戏
-│   ├── results.js          # 结算 / 遗憾目录 / 揭面
-│   ├── images.js           # 场景定镜图路径
-│   └── scenes/
-│       ├── scene1-ink.js   # Scene1 热区 → Ink
-│       ├── scene2-ink.js   # Scene2 热区 → Ink
-│       ├── scene3-ink.js   # Scene3 热区 → Ink
-│       └── scene{1,2,3}.js # 旧版参考 / 薄包装
-└── POC/                    # 原始 POC（设计文档 + 原型）
+```bash
+npm run dev -- --port 3001
 ```
 
-## 玩法
+无需账号，进度保存在当前浏览器。首次从九月一日 15:20、宿舍附近开始；之后可以从扉页继续存档，或确认后开始新的一局。浏览器清理网站数据后，本地进度也会删除；当前没有跨设备同步。
 
-1. **场景探索** — 点击太阳、教官、同学等元素，从探索中浮现选择
-2. **三场景分支** — 站军姿 → 拉歌 → 领队选拔，选择影响后续叙事
-3. **节奏游戏** — 自荐领队时触发正步节奏判定（16 节拍，12 次命中通过）
-4. **揭面结算** — 遗憾目录 + 「你记住的人」
+## 怎样体验这一章
 
-## 技术栈
+- **自由探索**：校园包含宿舍、操场、食堂、图书馆公共区、树荫和校门。点击或轻触地面行走，点击人物和地点可走近互动；也可用 WASD 或方向键移动。建筑和池塘会影响路线。
+- **留意时间**：标准速度为现实 1 秒对应校园 2 分钟，可在设置中改为 2 倍或 4 倍。对话、菜单、节拍练习、扉页和页面隐藏期间暂停；关闭游戏后不补算离线时间。
+- **按自己的节奏安排去处**：查看日程、选择目的地，或使用「等一会儿」推进不超过三十分钟。19:00 后可回宿舍休息至次日 07:00；22:00 停时等待休息。
+- **慢慢认识人物**：歪帽檐同学、抱书的同学、室友和教官各有自己的日程。个人故事需要在不同日期、地点和时段继续；重复点击不会增加关系。姓名随介绍显示，面容随具体经历逐步清晰。
+- **留下自己的选择**：主动表现、安静陪伴、尊重边界和表达分歧都有回应。了解程度与亲近程度分开，已经认识的面容不会因分歧重新模糊。
+- **完整结束**：迟到、错过集合和未报名都能继续。自荐领队会进入可跳过的八拍练习，没有成绩门槛。结营后回宿舍，或到第五日 22:00，可查看本局回忆并导出文本。
 
-- HTML5 + CSS3 + Vanilla JavaScript（ES Modules）
-- **Ink + inkjs** — 军训篇开场与 Scene1–3 叙事；节奏游戏 / 结算经 `# handoff:rhythm` / `# handoff:ending` 交给 JS
-- Web Audio API 合成音效
-- localStorage 进度存档
-- 静态部署（自有机 + GitHub Actions；也可 Netlify / Vercel / Pages）
+交互中按 `E` 或空格与附近对象交流，数字 `1—4` 选择选项，`Esc` 结束交谈或打开／关闭暂停菜单。拖动地图可平移，鼠标滚轮或画面缩放按钮可调整视野。移动端使用轻触、拖动和屏幕按钮。
 
-## 设计文档
+## 当前工程
 
-详见 `POC/design/` 目录：
+运行时使用浏览器原生 ES 模块、Canvas 2D、CSS、Web Audio 和 localStorage。没有前端框架或 Ink 运行时依赖；`ssh2` 仅用于手动部署。
 
-- `product_experience_v1.md` — **体验总纲**：大学特有场景、章末过场揭面、遗憾清单高潮
-- `visual_guide_v2.md` — 视觉定调：实景 + 手绘，无五官，羁绊揭面
-- `visual_asset_brief_v3.md` — 资产清单与 AI Prompt
-- `scene_script_military_v4.md` — 军训完整剧本
-- `technical_design_trial_v1.md` — 技术架构
-- `四年_交互设计v3_军训.md` — 交互设计
+```text
+index.html                  页面入口
+src/main.mjs                界面、输入、主循环、音效与浏览器存档
+src/world.mjs               校园绘制、坐标投影、碰撞与寻路
+src/simulation.mjs          日期、日程、事件、关系与存档状态恢复
+src/content.mjs             人物、校历、个人剧情与选择内容
+src/styles.css              页面、对话、肖像清晰阶段与响应式样式
+public/art/                 当前封面和人物肖像图集
+scripts/dev.mjs              本地开发服务器
+scripts/build.mjs            静态构建
+scripts/deploy-remote.mjs    SSH 手动部署
+tests/                      逻辑、地图与开发服务器测试
+```
 
-## 部署
+旧 `css/`、`js/`、`ink/`、`stories/` 及相关构建脚本已移除。`POC/`、`assets/` 和原设计文档保留为历史参考，当前运行入口不加载它们。旧版的 Ink、对齐工具、固定三场景和结尾一次性揭面说明不适用于新版。
 
-### GitHub Actions → 公网服务器
+## 检查与构建
 
-见 [DEPLOY.md](./DEPLOY.md)。push 到 `main` 后自动部署到 `139.224.30.109`。
+```bash
+npm test
+npm run build
+```
 
-仓库 Secrets 需配置：`SSH_HOST`、`SSH_USERNAME`、`SSH_PRIVATE_KEY`（服务器仅公钥登录）。安全组放行 **22** 与 **8000**。
+测试覆盖日程与人物路线、选择与读档、练习结果、可行走路径，以及静态资源服务。构建输出为 `dist/`，只包含 `index.html`、`src/` 和 `public/` 中公开资源的副本。模块保持原生导入路径，服务器应允许资源重新验证缓存。
 
-访问地址：**http://139.224.30.109:8000/**
+本地开发服务器只监听 `127.0.0.1`。服务器测试会短暂监听本机随机端口；受限执行环境需要允许本机网络。最新验证结果及验证边界见 [HANDOFF.md](HANDOFF.md)。
 
-### 静态托管（备选）
+## 部署与文档
 
-也可将整个项目目录上传至 Netlify 或 Vercel；若改过 Ink，部署前先 `npm run build` 并提交 `ink/` 产物。
+部署继续沿用现有 Nginx、SSH 和 GitHub Actions。手动执行 `npm run deploy:remote` 会重新构建并上传完整 `dist/`；CI 在推送 `main` 或手动触发后先测试、构建，再发布相同目录。账号、密钥和站点路径仍由既有环境变量／Secrets 配置。操作说明见 [DEPLOY.md](DEPLOY.md)。本轮实现不等于已发布到旧服务器。
 
----
+- [重做设计与审阅记录](docs/REBUILD_DESIGN.md)：已确认的产品方向、实际落地范围和原文档逐份审阅结论。
+- [军训篇内容与规则](docs/MILITARY_CONTENT.md)：五日日程、四人人物路线、叙事条件、状态接口与完整验证路线，包含剧情细节。
+- [美术方向与资产](docs/ART_DIRECTION.md)：当前封面、人物图集、制作来源及接入方式。
+- [工作交接](HANDOFF.md)：当前代码状态、验收与下一步。
 
-*Roll · 军训篇 · 2026*
+首版聚焦五天军训与一张校园地图。期中考试、社团、大学后续学期、多章节存档迁移、云存档和多人交互尚未实现。人物目前按时段切换到活动地点，没有连续行走的自主 NPC 系统；互动近景通过人物肖像对话面板呈现。不同手机浏览器的性能与触控体验仍需结合实际设备持续验证。

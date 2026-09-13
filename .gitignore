@@ -3,6 +3,7 @@ scripts/_extracted/
 
 # 依赖
 node_modules/
+dist/
 
 # 环境变量与密钥
 .env

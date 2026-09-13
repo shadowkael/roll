@@ -1,24 +1,17 @@
 {
   "name": "roll",
-  "version": "1.0.0",
-  "description": "**从「那个谁」到「有人」——大学四年的互动叙事游戏。**",
-  "main": "index.js",
+  "version": "2.0.0",
+  "private": true,
+  "description": "那个谁：通过自由探索、共同经历和选择，逐渐认识身边人的大学生活游戏。",
+  "engines": { "node": ">=22" },
   "dependencies": {
-    "inkjs": "^2.4.0",
     "ssh2": "^1.17.0"
   },
   "scripts": {
-    "ink:build": "node scripts/ink-build.mjs",
-    "ink:check": "node scripts/ink-check.mjs",
-    "ink:watch": "inklecate -w -o ink/military.json stories/military.ink",
-    "vendor:ink": "node scripts/copy-vendor-ink.mjs",
-    "predev": "npm run ink:build && npm run vendor:ink",
-    "dev": "npx serve -l 3000",
-    "build": "npm run ink:build && npm run vendor:ink",
-    "prepare": "node scripts/install-git-hooks.mjs",
-    "hooks:install": "node scripts/install-git-hooks.mjs",
+    "dev": "node scripts/dev.mjs",
+    "build": "node scripts/build.mjs",
     "deploy:remote": "node scripts/deploy-remote.mjs",
-    "test": "npm run ink:check"
+    "test": "node --test tests/*.test.mjs"
   },
   "repository": {
     "type": "git",
@@ -27,12 +20,9 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "commonjs",
+  "type": "module",
   "bugs": {
     "url": "https://github.com/shadowkael/roll/issues"
   },
-  "homepage": "https://github.com/shadowkael/roll#readme",
-  "devDependencies": {
-    "inklecate": "^1.8.1"
-  }
+  "homepage": "https://github.com/shadowkael/roll#readme"
 }

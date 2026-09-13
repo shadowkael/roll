@@ -22,66 +22,78 @@ jobs:
           node-version: '24'
           cache: npm
 
-      - name: Build Ink & vendor
-        # omit optional native addons (ssh2/cpu-features); not needed for static build.
-        # inklecate has no Linux binary — ink:build keeps committed ink/military.json on Ubuntu.
+      - name: Test and build game
         run: |
           npm ci --omit=optional
+          npm test
           npm run build
-          npm run ink:check
 
-      - name: Upload static files
+      - name: Validate destination
+        env:
+          ROLL_DEPLOY_PATH: ${{ secrets.DEPLOY_PATH || '/var/www/roll' }}
+        run: node --input-type=module -e 'import { validateDeployPath } from "./scripts/deploy-remote.mjs"; validateDeployPath(process.env.ROLL_DEPLOY_PATH)'
+
+      - name: Upload complete build
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.SSH_PORT || 22 }}
-          source: "index.html,css,js,assets,ink"
+          source: "dist/*"
           target: ${{ secrets.DEPLOY_PATH || '/var/www/roll' }}
+          strip_components: 1
           overwrite: true
           rm: false
 
-      - name: Fix permissions & reload web server
+      - name: Configure and reload web server
         uses: appleboy/ssh-action@v1.2.0
+        env:
+          ROLL_DEPLOY_PATH: ${{ secrets.DEPLOY_PATH || '/var/www/roll' }}
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.SSH_PORT || 22 }}
+          envs: ROLL_DEPLOY_PATH
           script: |
             set -e
-            DEPLOY_PATH="${{ secrets.DEPLOY_PATH || '/var/www/roll' }}"
-            mkdir -p "$DEPLOY_PATH/css" "$DEPLOY_PATH/js/scenes" "$DEPLOY_PATH/js/vendor" "$DEPLOY_PATH/assets/bg" "$DEPLOY_PATH/ink"
-            chown -R nginx:nginx "$DEPLOY_PATH" 2>/dev/null || chown -R www-data:www-data "$DEPLOY_PATH" 2>/dev/null || true
-            chmod -R a+rX "$DEPLOY_PATH"
-            if command -v nginx >/dev/null 2>&1; then
-              # Browsers reject ES modules served as application/octet-stream
-              if [ -f /etc/nginx/mime.types ] && ! grep -qE 'application/javascript[[:space:]]+.*mjs' /etc/nginx/mime.types; then
-                sed -i -E 's|(application/javascript[[:space:]]+)js;|\1js mjs;|' /etc/nginx/mime.types || true
-              fi
-              printf '%s\n' \
-                'server {' \
-                '    listen 8000;' \
-                '    server_name _;' \
-                "    root ${DEPLOY_PATH};" \
-                '    index index.html;' \
-                '    location ~* \.mjs$ {' \
-                '        default_type application/javascript;' \
-                '        add_header Cache-Control "public, max-age=604800";' \
-                '    }' \
-                '    location / {' \
-                '        try_files $uri $uri/ /index.html;' \
-                '    }' \
-                '    location ~* \.(js|mjs|css|jpg|jpeg|png|webp|svg|ico|woff2?)$ {' \
-                '        expires 7d;' \
-                '        add_header Cache-Control "public, immutable";' \
-                '    }' \
-                '    gzip on;' \
-                '    gzip_types text/css application/javascript image/svg+xml;' \
-                '}' > /etc/nginx/conf.d/roll.conf
-              nginx -t && systemctl reload nginx
-            elif command -v httpd >/dev/null 2>&1; then
-              apachectl configtest && systemctl reload httpd
+            case "$ROLL_DEPLOY_PATH" in
+              /*/*) ;;
+              *) echo 'DEPLOY_PATH must be an absolute site directory'; exit 1 ;;
+            esac
+            case "$ROLL_DEPLOY_PATH" in
+              *[!a-zA-Z0-9_./-]*|*/../*|*/./*|*/..|*/.|*//*|*/) echo 'Invalid DEPLOY_PATH'; exit 1 ;;
+            esac
+            test -f "$ROLL_DEPLOY_PATH/index.html"
+            if ! command -v nginx >/dev/null 2>&1; then
+              echo 'Nginx is not installed. Run the documented server setup first.' >&2
+              exit 1
             fi
-            echo "Deployed to $DEPLOY_PATH — http://${{ secrets.SSH_HOST }}:8000/"
+            cat > /etc/nginx/conf.d/roll.conf <<EOF_NGINX
+            server {
+                listen 8000;
+                server_name _;
+                root $ROLL_DEPLOY_PATH;
+                index index.html;
+                add_header Cache-Control "no-cache" always;
+                add_header X-Content-Type-Options "nosniff" always;
+                etag on;
+                location ~* \.mjs\$ {
+                    types { application/javascript mjs; }
+                    default_type application/javascript;
+                    try_files \$uri =404;
+                }
+                location / {
+                    try_files \$uri \$uri/ =404;
+                }
+                location ~ /\. {
+                    deny all;
+                }
+                gzip on;
+                gzip_types text/css application/javascript application/json image/svg+xml;
+            }
+            EOF_NGINX
+            nginx -t
+            systemctl reload nginx || systemctl start nginx || service nginx restart
+            echo "Deployed build to $ROLL_DEPLOY_PATH"

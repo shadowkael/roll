@@ -1,127 +1,104 @@
 import { Client } from 'ssh2';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { buildSshConfig } from './ssh-config.mjs';
+import { buildSite } from './build.mjs';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const root = path.join(__dirname, '..');
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
-const config = buildSshConfig();
-
-const DEPLOY_PATH = process.env.DEPLOY_PATH || '/var/www/roll';
-
-function collectFiles(dir, base = dir) {
-  const entries = fs.readdirSync(dir, { withFileTypes: true });
-  const files = [];
-  for (const entry of entries) {
-    const full = path.join(dir, entry.name);
-    if (entry.isDirectory()) files.push(...collectFiles(full, base));
-    else files.push({ local: full, remote: path.join(DEPLOY_PATH, path.relative(base, full)).replace(/\\/g, '/') });
+export function validateDeployPath(value) {
+  const parts = value.split('/').filter(Boolean);
+  if (!value.startsWith('/') || value.endsWith('/') || /[^a-zA-Z0-9_./-]/.test(value) || parts.length < 2 || parts.some(part => part === '.' || part === '..') || path.posix.normalize(value) !== value) {
+    throw new Error('DEPLOY_PATH must be a normalized absolute site directory, e.g. /var/www/roll');
   }
-  return files;
+  return value;
 }
 
-const uploadRoots = ['index.html', 'css', 'js', 'assets'];
-const files = uploadRoots.flatMap((item) => {
-  const local = path.join(root, item);
-  if (!fs.existsSync(local)) return [];
-  if (fs.statSync(local).isDirectory()) return collectFiles(local, local).map(f => ({
-    ...f,
-    remote: path.join(DEPLOY_PATH, item, path.relative(local, f.local)).replace(/\\/g, '/'),
-  }));
-  return [{ local, remote: path.join(DEPLOY_PATH, item).replace(/\\/g, '/') }];
-});
+export function renderNginx(template, deployPath) {
+  validateDeployPath(deployPath);
+  const directive = 'root /var/www/roll;';
+  if (!template.includes(directive)) throw new Error('Nginx template is missing the expected site root');
+  return template.replace(directive, `root ${deployPath};`);
+}
 
-const nginxConf = fs.readFileSync(path.join(root, 'deploy/nginx.conf.example'), 'utf8');
+function shellQuote(value) {
+  return `'${value.replaceAll("'", "'\\''")}'`;
+}
 
-const initScript = `
-set -e
-mkdir -p ${DEPLOY_PATH}
-chmod 755 ${DEPLOY_PATH}
-if ! command -v nginx >/dev/null 2>&1; then
-  if command -v apt-get >/dev/null 2>&1; then
-    apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y nginx
-  elif command -v yum >/dev/null 2>&1; then
-    yum install -y nginx
-  fi
-fi
-cat > /etc/nginx/conf.d/roll.conf << 'NGINXEOF'
-${nginxConf}
-NGINXEOF
-nginx -t
-systemctl enable nginx 2>/dev/null || true
-systemctl restart nginx || service nginx restart
-echo INIT_OK
-`;
+async function collectFiles(directory, relative = '') {
+  const files = [];
+  for (const entry of await fs.readdir(path.join(directory, relative), { withFileTypes: true })) {
+    const next = path.posix.join(relative, entry.name);
+    if (entry.isDirectory()) files.push(...await collectFiles(directory, next));
+    else if (entry.isFile()) files.push(next);
+    else throw new Error(`Unsupported build entry: ${next}`);
+  }
+  return files.sort((a, b) => (a === 'index.html') - (b === 'index.html') || a.localeCompare(b));
+}
 
-function exec(conn, cmd) {
+function execute(conn, command) {
   return new Promise((resolve, reject) => {
-    conn.exec(cmd, (err, stream) => {
-      if (err) return reject(err);
-      let out = '';
-      stream.on('data', d => { out += d; process.stdout.write(d); });
-      stream.stderr.on('data', d => process.stderr.write(d));
-      stream.on('close', code => code === 0 ? resolve(out) : reject(new Error(`exit ${code}`)));
+    conn.exec(command, (error, stream) => {
+      if (error) return reject(error);
+      stream.on('data', data => process.stdout.write(data));
+      stream.stderr.on('data', data => process.stderr.write(data));
+      stream.on('error', reject);
+      stream.on('close', code => code === 0 ? resolve() : reject(new Error(`Remote command exited with status ${code}`)));
     });
   });
 }
 
-function mkdirp(sftp, dir) {
-  const parts = dir.split('/').filter(Boolean);
-  let current = '';
-  return parts.reduce((chain, part) => {
-    current += '/' + part;
-    return chain.then(() => new Promise(resolve => {
-      sftp.mkdir(current, { mode: 0o755 }, () => resolve());
-    }));
-  }, Promise.resolve());
-}
-
-function upload(sftp, local, remote) {
-  const localPath = path.resolve(local);
-  return mkdirp(sftp, path.posix.dirname(remote)).then(() => new Promise((resolve, reject) => {
-    sftp.fastPut(localPath, remote, err => (err ? reject(err) : resolve()));
-  }));
-}
-
-const conn = new Client();
-conn
-  .on('ready', async () => {
-    try {
-      console.log('==> Initializing server...');
-      await exec(conn, initScript);
-
-      await exec(conn, `mkdir -p ${DEPLOY_PATH}/css ${DEPLOY_PATH}/js/scenes ${DEPLOY_PATH}/assets/bg`);
-
-      console.log(`==> Uploading ${files.length} files to ${DEPLOY_PATH}...`);
-      const sftp = await new Promise((resolve, reject) => {
-        conn.sftp((err, s) => (err ? reject(err) : resolve(s)));
+async function deploy() {
+  const deployPath = validateDeployPath(process.env.DEPLOY_PATH || '/var/www/roll');
+  const config = buildSshConfig();
+  const dist = await buildSite();
+  const files = await collectFiles(dist);
+  const nginx = renderNginx(await fs.readFile(path.join(root, 'deploy/nginx.conf.example'), 'utf8'), deployPath);
+  const conn = new Client();
+  try {
+    await new Promise((resolve, reject) => {
+      conn.once('ready', resolve).once('error', reject).connect(config);
+    });
+    // Upload only dist. Never remove or recursively synchronize a remote directory.
+    const directories = [...new Set(files.map(file => path.posix.dirname(path.posix.join(deployPath, file))))];
+    await execute(conn, `set -e\nmkdir -p ${directories.map(shellQuote).join(' ')}\n`);
+    const sftp = await new Promise((resolve, reject) => conn.sftp((error, result) => error ? reject(error) : resolve(result)));
+    console.log(`Uploading ${files.length} build files to ${deployPath}…`);
+    for (const file of files) {
+      await new Promise((resolve, reject) => {
+        sftp.fastPut(path.join(dist, file), path.posix.join(deployPath, file), { mode: 0o644 }, error => error ? reject(error) : resolve());
       });
-
-      for (const f of files) {
-        if (!fs.existsSync(f.local)) {
-          throw new Error(`Local file missing: ${f.local}`);
-        }
-        process.stdout.write(`  ${f.remote}\n`);
-        try {
-          await upload(sftp, f.local, f.remote);
-        } catch (err) {
-          throw new Error(`${f.local} -> ${f.remote}: ${err.message}`);
-        }
-      }
-
-      await exec(conn, `chmod -R a+rX ${DEPLOY_PATH} && echo DEPLOY_OK`);
-      console.log('\n==> Deploy complete: http://139.224.30.109:8000/');
-      conn.end();
-    } catch (e) {
-      console.error('Deploy failed:', e.message);
-      conn.end();
-      process.exit(1);
     }
-  })
-  .on('error', err => {
-    console.error('SSH error:', err.message);
-    process.exit(1);
-  })
-  .connect(config);
+    sftp.end();
+    await execute(conn, `set -e
+if ! command -v nginx >/dev/null 2>&1; then
+  if command -v apt-get >/dev/null 2>&1; then
+    apt-get update -qq
+    DEBIAN_FRONTEND=noninteractive apt-get install -y nginx
+  elif command -v yum >/dev/null 2>&1; then
+    yum install -y nginx
+  else
+    echo 'Install Nginx before deploying on this server.' >&2
+    exit 1
+  fi
+fi
+cat > /etc/nginx/conf.d/roll.conf <<'NGINX_ROLL_CONFIG'
+${nginx}
+NGINX_ROLL_CONFIG
+nginx -t
+systemctl enable nginx 2>/dev/null || true
+systemctl reload nginx || systemctl start nginx || service nginx restart
+`);
+    console.log(`Deploy complete: http://${config.host}:8000/`);
+  } finally {
+    conn.end();
+  }
+}
+
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  deploy().catch(error => {
+    console.error(`Deploy failed: ${error.message}`);
+    process.exitCode = 1;
+  });
+}

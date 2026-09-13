@@ -1,113 +1,83 @@
 # HANDOFF
 
-> 工作切片交接文档。每完成一个可交付切片后必须更新本文件，使「代码状态 + 交接说明 + 验收标准」三者对齐。约定见 `.cursor/rules/handoff.mdc`。
+> 每完成一个可交付切片更新本文件，使代码状态、交接与验收一致。约定见 [.cursor/rules/handoff.mdc](.cursor/rules/handoff.mdc)。
 
-**最后更新：** 2026-07-14  
-**分支：** `main`（含 Scene1 透视 + HANDOFF/README 文档；是否已 push 以 `git status` 为准）  
-**线上：** http://139.224.30.109:8000/（需 push 后才含本切片）
+**最后更新：** 2026-09-13
 
----
+**分支：** `main`；本次提交收录完整军训篇重做，未部署，未推送。
+
+**当前切片：** 已按用户确认设计交付五天军训篇，本地试玩服务运行中，自动化检查及浏览器主流程验收完成。
 
 # 当前目标
 
-横屏目视确认 Scene1 透视（教官更远、同学与自己体量相当），必要时在 `art-align` 微调后部署；保持 `HANDOFF.md` 与代码切片同步。
+完成《那个谁》首个可从入学玩到章末回忆的军训章节，让用户实际检验自由探索、校园时间、选择后果，以及人物因理解而逐渐清晰的体验。
 
-最终用户体验：横屏打开军训篇，Scene1 实景底图 + 手绘 SK 叠层透视自然，热区可点；随后 Scene2/3 Ink 叙事 → 节奏游戏 → 揭面结算可完整走通。
-
----
+设计对齐已经完成。用户明确回复「与我想要的体验一致，请开始进行具体设计实现」，授权按已讨论方向重建工程。主角留白、2D 斜俯视、可自由移动、比例时间／离线与阅读暂停、校历和条件事件、首版完整军训篇均已确定，不再作为待确认项。
 
 # 已完成
 
-- **本切片（即将 / 刚提交）：** Scene1 透视粗调 + `HANDOFF.md` / README / `.cursor/rules/handoff.mdc`  
-  - 文件：`assets/hotspots/scene1.json`、`tools/art-align.html`、`HANDOFF.md`、`README.md`、`.cursor/rules/handoff.mdc`  
-  - 教官 `bottom: 42%` / `width: 5.5%`；同学 `width: 18.5%` 与自己同深度对齐可视身高  
-  - 测试：本地合成预览；待横屏目视终验
-- **`d39b67f`** Migrate Scene2 and Scene3 narrative into the Ink pipeline.  
-  - 文件：`stories/military.ink`、`ink/military.json`、`ink/military.sha256`、`js/ink-controller.js`、`js/scenes/scene2-ink.js`、`js/scenes/scene3-ink.js`、`js/scenes/scene2.js`、`js/scenes/scene3.js`、`docs/INK.md`、`README.md`  
-  - 测试：`npm run ink:check`；本地走通 `# handoff:rhythm` / `# handoff:ending`
-- **`63c2eff`** Align Scene1 hotspots to landscape art layers.  
-  - 文件：`assets/hotspots/scene1.json`、`js/scene-compositor.js`、`css/style.css`、`tools/art-align.html`  
-  - 测试：美术模式叠层 + `?debugHotspots=1` 热区可见
-- **`1dae2d5`** Add landscape P0 Scene1 art and align docs to 16:9.  
-  - 文件：`assets/bg/bg-1.jpg`、`assets/sk/sk-*.png`、`docs/ART_*.md`、manifest  
-  - 测试：本地 `serve` 可见 BG/SK
-- **`4dd4754`** Serve `.mjs` as JavaScript（生产 ES modules 可加载）
-- **`0b79974` … `d2e3f51`** CI：`package-lock`、Linux 跳过 inklecate、`ink:check`、pre-commit、SSH 私钥部署、Actions Node 24
+- **内容与模拟：** `src/content.mjs`、`src/simulation.mjs` 实现九月一日至五日，六个校园地点、四位 NPC、五次校历事件、十二段个人剧情，以及同日常相遇相结合的关系变化。缺席、迟到、取消选择、补领军训服和提前休息都有后续，完全错过主线也能结局。
+- **探索与地图：** `src/world.mjs` 用 Canvas 绘制斜俯视校园，支持坐标投影、点击命中、镜头平移／缩放、建筑与池塘碰撞，以及绕障路径。`src/main.mjs` 接入键盘、鼠标与触控输入。
+- **人物与美术：** `public/art/campus-cover.png` 与 `public/art/portraits.png` 已接入。探索人物、近景对话和记忆手册使用同一关系状态；四阶段清晰变化在过程中发生，姓名按实际介绍显示，主角不生成固定姓名、身世或最终脸孔。
+- **界面与存档：** 扉页、继续／重新开始、日程、地点导航、记忆手册、设置、通知、自动本地存档和章末回忆均已接入。恢复存档不计算离线时间；选择前与反应阶段保留独立状态，避免重复登记经历。
+- **训练互动：** 自荐领队进入八拍练习，支持空格或轻触、主动跳过；成绩与跳过各有回应和真实记忆，不设置通关门槛，也不把准确度转换成羁绊。
+- **回忆导出：** 章末可下载本局实际经历的 UTF-8 文本，文件名为 `那个谁-九月的回忆.txt`。没有实际经历的分支不会被写进回忆。
+- **工具与部署：** 原生 Node 开发服务器及构建脚本、测试入口、手动 SSH 部署与 CI 已统一。构建产物仅为 `dist/`；`.mjs` MIME 与 `no-cache` 策略一致；部署不递归删除远端目录。保留既有账号、私钥与环境变量配置，未实际发布。
+- **旧实现清理：** 删除旧 CSS/JS/Ink/story 运行工程、对齐工具、Ink/vendor/extract/hooks 安装脚本和两套过时初始化脚本。`githooks/pre-commit` 改为 `npm test`，不自动修改或暂存文件。保留 POC、原始 assets 和全部设计文档。
+- **文档：** 更新 README、本文和 `docs/REBUILD_DESIGN.md`；新增 `docs/MILITARY_CONTENT.md` 与 `docs/ART_DIRECTION.md`；部署说明已经与新命令一致。
 
----
+本轮重做使用一个本地提交收录，提交标识以 `git log -1` 为准。旧 2026-07 的 Ink 迁移和 Scene1 图层工作可在 Git 历史中查阅，不再代表当前运行时结构。
 
 # 正在进行
 
-- **文件：** 无进行中的代码编辑（等待目视验收）
-- **已做到：** 透视参数与交接文档已入库（见上一节本切片）
-- **剩余步骤：**
-  1. 横屏打开 `tools/art-align.html` / 游戏确认比例
-  2. 若需微调：改 JSON → 再更新本文件 → commit
-  3. （可选）`git push origin main` 触发部署
-- **未提交修改：** 否（本提交之后应干净；若有本地未跟踪预览图勿提交）
-
----
+- 本地试玩入口为 `http://localhost:3000/`，开发服务仅监听本机；已在应用浏览器打开干净的初始扉页。验收存档使用 `http://127.0.0.1:3000/` 的独立网站存储，不影响试玩入口。
+- 独立审阅发现的三个 UI 问题均已修复并回归：刷新继续时恢复对话、练习期间 Esc 先关闭菜单、减少动态设置恢复。另调整夜间宿舍互动优先级、结营后的回忆入口文案和面容清晰过渡。
+- 用户已要求提交，本次将代码、美术、测试、文档与旧实现清理一起收录。没有后续代码修改正在进行；提交后以 `git status --short` 核对工作区，暂不推送或远端发布。
 
 # 技术决策
 
-- **Scene1–3 叙事进 Ink，玩法用 `# handoff`：** 保持单故事源（`stories/military.ink`），节奏游戏 / 结算仍用 JS 模块，避免把非分支玩法硬塞进 Ink。
-- **图层与热区以 JSON 为准（`assets/hotspots/scene1.json`）：** `scene-compositor.js` 在 art-mode 下生成叠层与不可见热区，CSS 线框仅作无资产回退。
-- **横屏 16:9 舞台：** BG 1920×1080；对齐工具舞台 640×360，百分比坐标与线上一致。
-- **同学按身高对齐 width，而非同 width%：** 精灵画布宽高比不同，同宽会导致同学过矮。
-- **CI Linux 不跑 inklecate：** 以已提交的 `ink/military.json` + `ink/military.sha256` + `npm run ink:check` 保证源与产物一致；本机改 ink 须先 build。
-- **部署用 `SSH_PRIVATE_KEY`：** 服务器仅公钥登录；已放弃 Actions 密码部署。
-
-放弃过的方案：
-
-- Scene2/3 继续整段 legacy JS 叙事 — 与 Scene1 Ink 管线分裂，难维护标签与变量。
-- 对搜索引擎 URL 用 scrape、对热区写死在 DOM — 不利于美术迭代与 art-mode 单一数据源。
-
----
+- **时间：** 标准现实 1 秒对应校园 2 分钟，设置可切换 2／4 倍。扉页、菜单、对话、节拍练习和页面隐藏时暂停。普通交谈结束不扣阅读时间；校历事件选择完成后，在回应页关闭时推进到活动结束。
+- **跨日：** 第一天 15:20 开始，之后 07:00 开始；19:00 后可在宿舍休息。每日 22:00 停时，第五日 22:00 自动结局；结营后也可回宿舍提前进入回忆。
+- **关系：** `clarity` 与 `trust` 分离。每个角色的三段个人经历至少跨三个游戏日；一次主线事件最多贡献初步留意。唯一经历 ID 防止重复点击或读档刷进度，分歧不降低已经得到的清晰度。
+- **事件：** 日期、时段、地点和前置经历共同决定入口；集合期间同场人物优先进入当前校历活动，防止日常开场覆盖训练。
+- **表现：** 校园是实际绘制和可行走的空间，封面不作为地图。近景使用同一四人肖像图集与面部局部遮罩表达渐进清晰，保留衣服、帽子和姿态的辨认线索。
+- **数据边界：** `content` 管故事，`simulation` 管游戏状态，`world` 管绘制与导航，`main` 管浏览器交互。开发与构建不依赖 Ink 或前端打包器，`ssh2` 仅用于部署。
+- **存档：** localStorage 单浏览器单存档；开启新一局需要确认，旧版 Ink 存档不迁移。无账号、云同步、后端与多人状态。
+- **发布：** 手动与 CI 使用相同 `dist` 布局，部署目录与 Nginx `root` 取同一 `DEPLOY_PATH`。固定资源名使用 `no-cache`，不配置 immutable 强缓存。当前不执行远端部署。
 
 # 已知问题
 
-- **当前报错：** 无已知阻塞性运行时错误；Scene1 透视仍待人工目视验收。
-- **未覆盖边界：**
-  - `loadProgress` 跨会话精确恢复到任意 knot / 玩法中段尚未做
-  - Scene2/3 尚无正式 BG/SK（多依赖线框或占位）
-  - 竖屏 / 小屏仅为降级，非一等体验
-- **临时 / stub：**
-  - `js/scenes/scene1.js`、`scene2.js`、`scene3.js` 旧逻辑保留参考或薄包装
-  - 揭示 / FX 资产、分享与分析未做
-  - `docs/INK.md` 个别旧表述可能仍写 `handoff:scene2` → legacy（以 `ink-controller.js` 与实际标签为准）
-
----
+- 首版用五天压缩军训过程，不是完整大学四年的内容；考试、社团、后续学期与多章节关系延续尚未实现。
+- NPC 根据时段直接切换活动点，没有连续走路或自主规划行为；人物近景是肖像对话面板，没有完整镜头演出或角色骨骼动画。
+- 校园声音为 Web Audio 合成脚步、轻响和训练节拍，没有完整配乐、配音或环境音资产。
+- 存档依赖当前浏览器的网站存储，清理数据或使用另一设备无法自动找回。存储受限时页面内仍可游玩，但无法保证关闭后恢复。
+- 旧 `POC/` 与 `docs/INK.md`、`docs/ART_WORKFLOW.md` 等含已移除路径和旧产品设定，作为历史参考保留。当前行为以 README、重做设计、军训内容文档及代码为准。
+- 尚未验证本次产物在旧公网服务器的真实部署结果；不能把原站点地址当作新版已上线证据。
+- 手机布局已通过浏览器窄视口目视检查；尚未进行 iOS／Android 真机、真实触控及性能测试。
 
 # 验收标准
 
-## 功能行为
+## 已执行的分项验证
 
-- [ ] Scene1：教官脚底明显在更远地面；近处自己与同学体量观感相当
-- [ ] Scene1 热区（太阳 / 教官 / 同学头身 / 自己 / 地面等）可点，Ink 推进正常
-- [ ] Scene1 → Scene2 → Scene3 → `# handoff:rhythm` → 结算/`# handoff:ending` 可走通
-- [ ] 生产站 ES modules 加载正常（页面「开始」有响应）
+- `node --test tests/simulation.test.mjs`：27 项通过；覆盖完整章节、四人人物路线、阅读暂停、事件优先级、信任／清晰分离、选择前后读档和练习结果等。
+- `node --test tests/world.test.mjs`：6 项通过；覆盖地图碰撞、端点、绕障和路径安全。
+- `node --test tests/server.test.mjs`：6 项通过；覆盖静态资源 MIME、URL 解码、HEAD、缺失资源、路径穿越、构建过滤与部署目录校验。
+- 开发服务器测试使用仅监听 `127.0.0.1` 的临时端口；受限沙箱需授予本机监听权限。没有为了通过测试跳过这些检查。
 
-## 测试命令
+## 最终整合验证记录
 
-```bash
-npm install
-npm run build
-npm test                 # ink:check
-npm run dev              # http://localhost:3000
-# 或临时端口：npx serve -l 3010 .
-```
+- `npm test`：39 项通过，0 失败（27 项模拟、6 项地图、6 项服务器与构建）。
+- `npm run build`：成功生成 `dist/`；`node --check src/main.mjs` 与 `git diff --check` 通过。
+- 浏览器实际从第一日玩至第五日回忆：初遇室友、错过领衣后补领、按日休息、沿路线去操场、站军姿、自荐领队、跳过练习、结营、回宿舍收好回忆。
+- 刷新后恢复选择页、选择后的回应页与未完成的节拍练习；回应、关系和回忆没有重复登记。打开菜单后停留超过 30 秒，校园时钟保持不变；Esc 关闭菜单后练习仍存在。减少动态设置在刷新后保留。
+- 目视检查桌面扉页／校园／对话，以及手机窄视口下的近景、选项、顶部按钮和校园缩放。未相识与初步留意的肖像遮罩可见；四人全部理解阶段及跨日路线由模拟测试覆盖。
+- 章末回忆与实际选择一致，未相识角色保持未知。已点击文本导出入口，浏览器无报错；内置浏览器未返回下载文件路径，未做落盘文件内容复核。
+- 完整游玩过程中浏览器 `error`／`warn` 日志为空。最后的宿舍入口文案调整由模拟测试覆盖。
 
-对齐微调：http://localhost:3000/tools/art-align.html  
-热区调试：http://localhost:3000/?debugHotspots=1
+## 验收边界
 
-## 成功条件
-
-- 上述勾选项在横屏浏览器（或真机横屏）目视 + 点击通过
-- `npm test` 通过；若改过 `.ink`，`ink/military.json` 与 sha 已更新且已提交
-- `HANDOFF.md` 与当前分支 / 未提交状态一致
-
----
+自动化覆盖所有主线与四人理解路线；浏览器覆盖一条包含缺席和可选练习的完整章节路线。测试没有穷举所有浏览器和输入设备；真机触控、全量人物演出与公网部署结果不在本轮已验证范围内。
 
 # 下一步
 
-运行 `npm run dev`，打开 http://localhost:3000/tools/art-align.html 横屏目视 Scene1；若不满意则微调后改 `assets/hotspots/scene1.json` 并再更新本文件，满意则执行 `git push origin main` 部署。
+先试玩已交付的军训篇，围绕时间节奏、地图行走感、人物清晰程度和故事选择继续迭代。后续学期与事件可以沿 `content`／`simulation` 的分工扩展。发布时按 `DEPLOY.md` 执行既有流程；本轮不发布。
