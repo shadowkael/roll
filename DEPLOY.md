@@ -22,13 +22,19 @@ npm run build
 
 ## 现有站点与认证
 
-**2026-09-13 核验：[当前军训篇已在线](http://139.224.30.109:8000/)。** 线上 9 个公开文件与本地提交 `eb6d132` 的 `dist/` 逐项 SHA-256 完全一致；文件均返回 200、正确 MIME、`Cache-Control: no-cache` 和 `X-Content-Type-Options: nosniff`，不存在的 `.mjs` 返回 404。本次只读确认现有线上版本，没有重新上传或修改服务器配置；此记录覆盖文件和 HTTP 层，不代表额外完成一次线上全章浏览器回归。
+**2026-09-14 发布成功：[在线试玩](http://139.224.30.109:8000/)。** 游戏提交为 `a1d3985`，[GitHub Actions 34793818430](https://github.com/shadowkael/roll/actions/runs/34793818430) 的测试构建、上传与 Nginx 配置重载全部成功。北京时间 08:50 复验：线上 14 个文件与本地 `dist/` 的 SHA-256 和字节数全部一致，均返回 200、正确 MIME、`Cache-Control: no-cache` 和 `X-Content-Type-Options: nosniff`；不存在的 `.mjs` 返回 404。内置浏览器公网导航超时，未据此声称完成线上交互回归。
 
-**2026-09-14 工作区状态：** 本轮近景演出与音乐增强尚未发布，当前 `dist/` 已不同于上述线上版本。发布时需上传完整构建，包括新增 `scene-content.mjs`、`cinematic.mjs`、`audio.mjs`、`encounter.css` 和 `art/scene-backgrounds.png`；不能沿用旧版九文件清单作为新版验收清单。
+此前 2026-09-13 的九文件核验对应基础版本 `eb6d132`。新版包含新增 `scene-content.mjs`、`cinematic.mjs`、`audio.mjs`、`encounter.css` 和 `art/scene-backgrounds.png`；后续继续以完整 `dist/` 文件清单验收。
 
 默认站点目录为 `/var/www/roll`。云安全组需要开放 HTTP 8000；部署通道使用 SSH 22。SSH 服务器使用公钥认证；私钥不得提交到仓库或输出到日志。
 
-本次本机 `id_ed25519`、`id_rsa` 及系统 SSH 尝试均未通过认证，`gh` 也未登录。后续发布更新前需恢复可用的部署私钥／服务器授权或 GitHub 操作认证；这些操作限制不影响当前已经在线的版本。本次没有推送代码，也没有触发 CI。
+本机直接 SSH 认证尚未恢复，`gh` 未登录；但现有 Git HTTPS 凭据可用于推送，CI 中的服务器认证可用，本轮已成功通过此路径发布。首次推送出现 sideband 连接中断，确认远端未更新后，使用仅作用于当前命令的传输参数重试成功，未修改全局配置：
+
+```bash
+git -c http.version=HTTP/1.1 -c http.postBuffer=16777216 push origin main
+```
+
+如需本机手动部署，再配置服务器已经授权的 `SSH_KEY_PATH`。不需要为了正常的 Git 推送和自动部署先登录 `gh`。
 
 GitHub 仓库的 Settings → Secrets and variables → Actions 中保留以下配置：
 
