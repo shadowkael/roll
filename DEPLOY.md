@@ -22,7 +22,13 @@ npm run build
 
 ## 现有站点与认证
 
-沿用当前站点 http://139.224.30.109:8000/，默认站点目录 `/var/www/roll`。云安全组需要开放 HTTP 8000；部署通道使用 SSH 22。SSH 服务器使用公钥认证；私钥不得提交到仓库或输出到日志。
+**2026-09-13 核验：[当前军训篇已在线](http://139.224.30.109:8000/)。** 线上 9 个公开文件与本地提交 `eb6d132` 的 `dist/` 逐项 SHA-256 完全一致；文件均返回 200、正确 MIME、`Cache-Control: no-cache` 和 `X-Content-Type-Options: nosniff`，不存在的 `.mjs` 返回 404。本次只读确认现有线上版本，没有重新上传或修改服务器配置；此记录覆盖文件和 HTTP 层，不代表额外完成一次线上全章浏览器回归。
+
+**2026-09-14 工作区状态：** 本轮近景演出与音乐增强尚未发布，当前 `dist/` 已不同于上述线上版本。发布时需上传完整构建，包括新增 `scene-content.mjs`、`cinematic.mjs`、`audio.mjs`、`encounter.css` 和 `art/scene-backgrounds.png`；不能沿用旧版九文件清单作为新版验收清单。
+
+默认站点目录为 `/var/www/roll`。云安全组需要开放 HTTP 8000；部署通道使用 SSH 22。SSH 服务器使用公钥认证；私钥不得提交到仓库或输出到日志。
+
+本次本机 `id_ed25519`、`id_rsa` 及系统 SSH 尝试均未通过认证，`gh` 也未登录。后续发布更新前需恢复可用的部署私钥／服务器授权或 GitHub 操作认证；这些操作限制不影响当前已经在线的版本。本次没有推送代码，也没有触发 CI。
 
 GitHub 仓库的 Settings → Secrets and variables → Actions 中保留以下配置：
 

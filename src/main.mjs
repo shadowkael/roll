@@ -1,6 +1,9 @@
 import { createGame, INTERACTION_RADIUS } from './simulation.mjs';
 import { LOCATIONS, CHARACTERS, DAYS, EVENTS } from './content.mjs';
 import { createWorldRenderer, findPath, isWalkable } from './world.mjs';
+import { createSceneRenderer } from './cinematic.mjs';
+import { getScenePlan } from './scene-content.mjs';
+import { createAudio } from './audio.mjs';
 
 const $ = (selector) => document.querySelector(selector);
 const escape = (value = '') => String(value).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -31,44 +34,32 @@ function paintIcons(root = document) { root.querySelectorAll('[data-icon]').forE
 let saved = null, storageAvailable = true;
 try { saved = localStorage.getItem(SAVE_KEY); } catch { storageAvailable = false; }
 let game = createGame(saved);
-let settings = { sound: false, speed: 1, reducedMotion: matchMedia('(prefers-reduced-motion: reduce)').matches };
-try { const stored = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}'); settings = { ...settings, sound: stored.sound === true, speed: [1, 2, 4].includes(stored.speed) ? stored.speed : 1, reducedMotion: typeof stored.reducedMotion === 'boolean' ? stored.reducedMotion : settings.reducedMotion }; } catch { /* Keep defaults if storage is not available. */ }
+let settings = { sound: true, music: true, musicVolume: .35, speed: 1, reducedMotion: matchMedia('(prefers-reduced-motion: reduce)').matches };
+try {
+  const stored = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}');
+  settings = { ...settings, sound: typeof stored.sound === 'boolean' ? stored.sound : true,
+    music: typeof stored.music === 'boolean' ? stored.music : stored.sound !== false,
+    musicVolume: Number.isFinite(stored.musicVolume) ? Math.max(0, Math.min(1, stored.musicVolume)) : .35,
+    speed: [1, 2, 4].includes(stored.speed) ? stored.speed : 1,
+    reducedMotion: typeof stored.reducedMotion === 'boolean' ? stored.reducedMotion : settings.reducedMotion };
+} catch { /* Keep defaults if storage is not available. */ }
+
 let titleVisible = true, overlay = null, journalTab = 'people', scheduleDay = game.state.day;
 let route = [], destination = null, pendingInteraction = null, hoverId = null;
 let seenNotifications = new Set(), toastUntil = 0, uiSignature = '', dialogueSignature = '';
 let seenMemories = game.state.memories.length, lastSavedAt = 0, lastFrame = performance.now();
-let rhythm = null, lastFootstep = 0;
+let rhythm = null, lastFootstep = 0, audioStarted = false;
+let encounter = null, sceneRenderer = null;
 const keys = new Set();
 const canvas = $('#campus');
 const world = createWorldRenderer(canvas);
 const audio = createAudio();
+audio.configure({ sound: settings.sound, music: settings.music, volume: settings.musicVolume });
 paintIcons();
 renderTitle();
 updateUI(true);
 requestAnimationFrame(frame);
 
-function createAudio() {
-  let context, gain;
-  function init() {
-    if (!context) {
-      const Context = window.AudioContext || window.webkitAudioContext;
-      if (!Context) return;
-      context = new Context(); gain = context.createGain(); gain.gain.value = .12; gain.connect(context.destination);
-    }
-    if (context.state === 'suspended') context.resume().catch(() => {});
-  }
-  function note(frequency = 550, length = .08, volume = .11, kind = 'sine') {
-    if (!settings.sound) return;
-    init(); if (!context || context.state !== 'running') return;
-    const oscillator = context.createOscillator(), envelope = context.createGain();
-    oscillator.type = kind; oscillator.frequency.value = frequency;
-    envelope.gain.setValueAtTime(0, context.currentTime); envelope.gain.linearRampToValueAtTime(volume, context.currentTime + .008);
-    envelope.gain.exponentialRampToValueAtTime(.001, context.currentTime + length);
-    oscillator.connect(envelope); envelope.connect(gain); oscillator.start(); oscillator.stop(context.currentTime + length + .02);
-    oscillator.onended = () => { oscillator.disconnect(); envelope.disconnect(); };
-  }
-  return { init, note, step: () => note(95, .04, .025, 'triangle'), click: () => note(720, .07, .12), suspend: () => context?.suspend().catch(() => {}), resume: () => { if (settings.sound) init(); } };
-}
 
 function save() {
   try { localStorage.setItem(SAVE_KEY, game.serialize()); saved = game.serialize(); storageAvailable = true; }
@@ -96,12 +87,12 @@ function begin(fresh = false) {
   if (fresh) { game = createGame(); seenNotifications = new Set(); seenMemories = 0; scheduleDay = 1; uiSignature = ''; dialogueSignature = ''; }
   titleVisible = false; overlay = null; rhythm = null; route = []; destination = null; pendingInteraction = null;
   dialogueSignature = '';
-  renderTitle(); renderOverlay(); audio.resume();
+  resetEncounter(); renderTitle(); renderOverlay(); audioStarted = true; audio.resume();
   if (matchMedia('(max-width:650px)').matches) world.focus(game.state.player.x, game.state.player.y);
   else world.focus(48, 46);
   if (game.state.dialogue?.nodeId === 'selection' && game.state.dialogue.stage === 'reaction' && game.state.flags.selectionChoice === 'lead' && !game.state.memories.some((m) => m.id === 'march-practice')) startPractice();
   lastFrame = performance.now(); save(); updateUI(true); canvas.focus({ preventScroll: true });
-  if (fresh || !game.state.memories.length) toast('点击地面走一走。靠近人时，按 E 或轻触「聊一聊」。日程里有今天的安排。');
+  if (!game.state.dialogue && (fresh || !game.state.memories.length)) toast('点击地面走一走。靠近人时，按 E 或轻触「聊一聊」。日程里有今天的安排。');
 }
 
 function showOverlay(which) {
@@ -129,24 +120,109 @@ function renderOverlay() {
     const content = `<div class="journal-tabs"><button class="${journalTab === 'people' ? 'active' : ''}" data-action="journal-tab" data-tab="people">遇见的人</button><button class="${journalTab === 'memories' ? 'active' : ''}" data-action="journal-tab" data-tab="memories">留下的片段 · ${memories.length}</button></div>${journalTab === 'people' ? `<div class="people-grid">${Object.keys(CHARACTERS).map((id) => { const rel = game.state.relationships[id]; return `<article class="person-card">${portrait(id)}<h3>${escape(nameOf(id))}</h3><p>${rel.clarity ? escape(CHARACTERS[id].description) : '还没来得及好好认识。'}</p><div class="person-clue">${rel.clarity ? escape(CHARACTERS[id].habits[Math.min(rel.clarity - 1, 2)]) : '在校园里，慢慢遇见。'}</div></article>`; }).join('')}</div><p class="panel-footnote">名字来自一次介绍，熟悉来自许多次相遇。<br>知道一个人的更多侧面，不一定意味着永远意见相同。</p>` : memories.length ? `<div class="memory-list">${[...memories].reverse().map(memoryEntry).join('')}</div>` : '<p class="journal-empty">纸页还是空的。<br>去走走吧，总有些什么会留下来。</p>'}`;
     root.innerHTML = wrapPanel('慢慢认出你', 'THINGS TO REMEMBER / 记忆手册', content, 'journal-panel');
   } else if (overlay === 'settings') {
-    root.innerHTML = wrapPanel('让时间停一会儿', 'TAKE YOUR TIME / 暂停', `<div class="settings-row"><div>校园声音<p>脚步、轻响和训练节拍。</p></div><button data-action="sound">${settings.sound ? '已开启' : '已关闭'}</button></div><div class="settings-row"><div>时间流速<p>标准：现实 1 秒，校园 2 分钟。<br>对话、菜单和离线时，校园时间暂停。</p></div><select id="speed-select" aria-label="时间流速"><option value="1" ${settings.speed === 1 ? 'selected' : ''}>标准</option><option value="2" ${settings.speed === 2 ? 'selected' : ''}>快一些 · 2 倍</option><option value="4" ${settings.speed === 4 ? 'selected' : ''}>很快 · 4 倍</option></select></div><div class="settings-row"><div>安静的画面<p>减少环境摆动与过渡动画。</p></div><button data-action="motion">${settings.reducedMotion ? '已减少动态' : '轻微动态'}</button></div><div class="help-keys"><span><kbd>WASD / 方向键</kbd> 行走</span><span><kbd>E / 空格</kbd> 就近互动</span><span><kbd>鼠标滚轮</kbd> 缩放地图</span><span><kbd>Esc</kbd> 暂停 / 返回</span></div><div class="settings-actions"><button class="primary-button" data-action="close">继续生活 ${icon('arrow-right')}</button><button class="text-button" data-action="home">保存并返回扉页</button><button class="danger-button" data-action="new-confirm">重新开始</button></div><p class="save-status">${storageAvailable ? '进度会自动保存在这台设备，无需登录。' : '此浏览器暂时无法保存。当前页面仍可继续游玩。'}</p>`);
+    root.innerHTML = wrapPanel('让时间停一会儿', 'TAKE YOUR TIME / 暂停', `<div class="settings-row"><div>九月的背景音乐<p>轻钢琴与拨弦，随白天、夜晚和相遇变化。</p></div><button data-action="music">${settings.music ? '音乐已开启' : '音乐已关闭'}</button></div><div class="settings-row music-volume-row"><label for="music-volume">音乐音量 <output id="music-volume-label">${Math.round(settings.musicVolume * 100)}%</output></label><input id="music-volume" type="range" min="0" max="100" value="${Math.round(settings.musicVolume * 100)}"></div><div class="settings-row"><div>身边的声音<p>脚步、纸页轻响和训练节拍。</p></div><button data-action="effects">${settings.sound ? '音效已开启' : '音效已关闭'}</button></div><div class="settings-row"><div>时间流速<p>标准：现实 1 秒，校园 2 分钟。<br>对话、菜单和离线时，校园时间暂停。</p></div><select id="speed-select" aria-label="时间流速"><option value="1" ${settings.speed === 1 ? 'selected' : ''}>标准</option><option value="2" ${settings.speed === 2 ? 'selected' : ''}>快一些 · 2 倍</option><option value="4" ${settings.speed === 4 ? 'selected' : ''}>很快 · 4 倍</option></select></div><div class="settings-row"><div>安静的画面<p>减少环境摆动与过渡动画。</p></div><button data-action="motion">${settings.reducedMotion ? '已减少动态' : '轻微动态'}</button></div><div class="help-keys"><span><kbd>WASD / 方向键</kbd> 行走</span><span><kbd>E / 空格</kbd> 就近互动</span><span><kbd>鼠标滚轮</kbd> 缩放地图</span><span><kbd>Esc</kbd> 暂停 / 返回</span></div><div class="settings-actions"><button class="primary-button" data-action="close">继续生活 ${icon('arrow-right')}</button><button class="text-button" data-action="home">保存并返回扉页</button><button class="danger-button" data-action="new-confirm">重新开始</button></div><p class="save-status">${storageAvailable ? '进度会自动保存在这台设备，无需登录。' : '此浏览器暂时无法保存。当前页面仍可继续游玩。'}</p>`);
   } else if (overlay === 'new-confirm') {
     root.innerHTML = wrapPanel('再走进一次九月', 'A NEW BEGINNING / 重新开始', '<p class="panel-description">将从入学日开始新的经历。这台设备上当前这一局的进度会被替换。</p><div class="confirm-actions"><button class="primary-button" data-action="start">开始新的一局</button><button class="text-button" data-action="close">留在这一段生活里</button></div>');
   }
   root.querySelector('.panel-close')?.focus({ preventScroll: true });
 }
 
+function resetEncounter() {
+  encounter = null;
+  sceneRenderer = null;
+  document.body.classList.remove('has-encounter');
+  $('#dialogue-root').innerHTML = '';
+}
+
+function sceneChoicesReady() {
+  return encounter && encounter.beatIndex === encounter.plan.beats.length - 1 && !encounter.action;
+}
+
 function renderDialogue() {
   const dialogue = game.state.dialogue;
-  const signature = JSON.stringify(dialogue);
   document.body.classList.toggle('has-dialogue', Boolean(dialogue) || Boolean(rhythm));
+  if (!dialogue || titleVisible) {
+    if (encounter || $('#dialogue-root').children.length) resetEncounter();
+    dialogueSignature = '';
+    return;
+  }
+  const signature = JSON.stringify(dialogue);
+  if (!encounter || signature !== dialogueSignature) {
+    const oldScene = encounter;
+    const plan = getScenePlan(dialogue, game.state);
+    encounter = { plan, beatIndex: 0, elapsed: oldScene?.elapsed || 0, beatElapsed: 0, action: null, history: false };
+    dialogueSignature = signature;
+    if (!$('#encounter-canvas')) {
+      $('#dialogue-root').innerHTML = `<div class="encounter-wrap"><canvas id="encounter-canvas" aria-hidden="true"></canvas><div class="encounter-vignette"></div><header class="encounter-heading"><div><span class="encounter-eyebrow">九月的一个瞬间</span><h2 id="encounter-title"></h2><p id="encounter-place"></p></div><button class="encounter-exit" data-action="dismiss-dialogue" aria-label="结束交谈，回到校园">回到校园 <span>×</span></button></header><button class="scene-hotspot" data-action="scene-observe" hidden><span class="hotspot-ring"></span><span class="hotspot-label"></span></button><div id="scene-dialogue-slot"></div></div>`;
+      sceneRenderer = createSceneRenderer($('#encounter-canvas'));
+    }
+    document.body.classList.add('has-encounter');
+    const location = LOCATIONS.find((item) => item.id === plan.locationId);
+    $('#encounter-title').textContent = dialogue.title;
+    $('#encounter-place').textContent = `${location?.name || '校园'} · ${time(game.state.minute)}  /  时间停在这一刻`;
+    renderSceneBeat();
+  }
+  if (rhythm) renderRhythm();
+}
+
+function renderSceneBeat() {
+  if (!encounter || !game.state.dialogue) return;
   if (rhythm) { renderRhythm(); return; }
-  if (signature === dialogueSignature) return;
-  dialogueSignature = signature;
-  if (!dialogue || titleVisible) { $('#dialogue-root').innerHTML = ''; return; }
+  const { plan, beatIndex, history } = encounter;
+  const beat = plan.beats[beatIndex];
+  const dialogue = game.state.dialogue;
   const id = dialogue.speakerId;
-  const event = dialogue.source === 'event' && EVENTS.find((candidate) => candidate.id === dialogue.nodeId);
-  $('#dialogue-root').innerHTML = `<div class="dialogue-wrap"><section class="dialogue-box ${id ? '' : 'dialogue-no-portrait'}" role="dialog" aria-label="${escape(dialogue.title)}">${id ? `<aside class="dialogue-portrait">${portrait(id)}<span class="portrait-caption">${stageNames[game.state.relationships[id]?.clarity || 0]}</span></aside>` : ''}<div class="dialogue-body"><button class="dialogue-dismiss" data-action="dismiss-dialogue" aria-label="结束交谈">×</button><span class="dialogue-tag">${escape(dialogue.title)}</span><div class="speaker-line"><span class="speaker-name">${id ? escape(nameOf(id)) : '校园的一个角落'}</span><span class="speaker-context">${event ? `这段训练进行至 ${time(event.end)}` : '此刻，时间为这次相遇停下来'}</span></div><div class="dialogue-lines">${dialogue.lines.map((line) => `<p>${escape(line)}</p>`).join('')}</div><div class="dialogue-choices">${dialogue.choices.map((choice, i) => `<button class="choice-button" data-action="choose" data-choice="${i}"><span class="choice-index">${dialogue.stage === 'reaction' ? '·' : `0${i + 1}`}</span><span class="choice-copy">${escape(choice.text)}${choice.hint ? `<small>${escape(choice.hint)}</small>` : ''}</span>${icon('arrow-right')}</button>`).join('')}</div></div></section></div>`;
+  const last = sceneChoicesReady();
+  const speaker = id ? nameOf(id) : '你';
+  const nextLabel = beatIndex === 0 ? '走近一点' : '听下去';
+  const controls = last
+    ? `<div class="scene-choices">${dialogue.choices.map((choice, i) => `<button class="scene-choice" data-action="choose" data-choice="${i}"><span class="scene-choice-number">${dialogue.stage === 'reaction' ? '↗' : `0${i + 1}`}</span><span>${escape(choice.text)}${choice.hint ? `<small>${escape(choice.hint)}</small>` : ''}</span>${icon('arrow-right')}</button>`).join('')}</div>`
+    : `<button class="scene-next" data-action="scene-next">${nextLabel}${icon('arrow-right')}<kbd>空格</kbd></button>`;
+  $('#scene-dialogue-slot').innerHTML = `<section class="scene-dialogue" role="dialog" aria-label="${escape(dialogue.title)}"><div class="scene-caption-meta"><span class="scene-speaker">${escape(speaker)}</span><span class="scene-stage-label">${id ? stageNames[game.state.relationships[id]?.clarity || 0] : escape(plan.ambience)}</span><span class="scene-beats" aria-label="第 ${beatIndex + 1} 幕，共 ${plan.beats.length} 幕">${plan.beats.map((_, i) => `<i class="${i === beatIndex ? 'current' : i < beatIndex ? 'seen' : ''}"></i>`).join('')}</span></div><p class="scene-caption" aria-live="polite">${escape(beat.text)}</p>${controls}<div class="scene-reading-tools"><button data-action="scene-history" aria-expanded="${history}">${history ? '收起' : '回看这段对话'}</button>${!last ? `<button data-action="scene-skip">${dialogue.stage === 'reaction' ? '看完这一幕' : '直接回应'} <span>↗</span></button>` : '<span>按自己的节奏，不用赶时间。</span>'}</div>${history ? `<div class="scene-transcript">${dialogue.lines.map((line) => `<p>${escape(line)}</p>`).join('')}</div>` : ''}</section>`;
+  const hotspot = $('.scene-hotspot');
+  hotspot.hidden = !beat.actionLabel || last || Boolean(encounter.action);
+  hotspot.querySelector('.hotspot-label').textContent = beat.actionLabel || '';
+  hotspot.setAttribute('aria-label', beat.actionLabel || '观察身边的细节');
+}
+
+function nextSceneBeat(skip = false) {
+  if (!encounter || overlay || rhythm || titleVisible || encounter.action) return;
+  const next = skip ? encounter.plan.beats.length - 1 : encounter.beatIndex + 1;
+  if (next >= encounter.plan.beats.length) return;
+  encounter.beatIndex = next;
+  encounter.beatElapsed = 0;
+  encounter.history = false;
+  audio.cue(encounter.plan.beats[next].gesture);
+  renderSceneBeat();
+}
+
+function observeScene() {
+  if (!encounter || overlay || rhythm || encounter.action || sceneChoicesReady()) return;
+  if (settings.reducedMotion) { nextSceneBeat(); return; }
+  encounter.action = { elapsed: 0 };
+  $('.scene-hotspot').hidden = true;
+  audio.cue(encounter.plan.beats[encounter.beatIndex].prop || encounter.plan.prop);
+}
+
+function updateEncounter(dt) {
+  if (!encounter || !sceneRenderer || titleVisible) return;
+  const advancing = !overlay && !document.hidden;
+  if (advancing) {
+    encounter.elapsed += dt;
+    encounter.beatElapsed += dt;
+    if (encounter.action) {
+      encounter.action.elapsed += dt;
+      if (encounter.action.elapsed >= .9) { encounter.action = null; nextSceneBeat(); }
+    }
+  }
+  let plan = encounter.plan;
+  if (rhythm) plan = { ...plan, beats: plan.beats.map((beat) => ({ ...beat, focus: 'wide', gesture: 'step' })) };
+  sceneRenderer.draw({ plan, beatIndex: encounter.beatIndex, state: game.state, elapsed: encounter.elapsed, beatElapsed: encounter.beatElapsed, actionProgress: encounter.action ? Math.min(1, encounter.action.elapsed / .9) : 0, reducedMotion: settings.reducedMotion });
+  const hotspot = $('.scene-hotspot');
+  if (hotspot && !hotspot.hidden) {
+    const anchor = sceneRenderer.getHotspot();
+    if (anchor) { hotspot.style.left = `${anchor.x}px`; hotspot.style.top = `${anchor.y}px`; }
+  }
 }
 
 function renderEnding() {
@@ -159,22 +235,21 @@ function renderEnding() {
 }
 
 function choose(index) {
+  if (!sceneChoicesReady() || overlay || rhythm || titleVisible) return;
   const dialogue = game.state.dialogue;
-  const speaker = dialogue?.speakerId;
-  const previousClarity = game.state.relationships[speaker]?.clarity ?? 0;
+  const previousClarity = game.state.relationships[dialogue?.speakerId]?.clarity || 0;
   const practice = dialogue?.source === 'event' && dialogue.nodeId === 'selection' && dialogue.stage === 'choice' && index === 0 && !game.state.memories.some((memory) => memory.id === 'march-practice');
   game.choose(index); audio.click(); save();
+  if ((game.state.relationships[dialogue?.speakerId]?.clarity || 0) > previousClarity) audio.cue('recognition');
   if (practice) startPractice();
   updateUI(true);
-  const currentClarity = game.state.relationships[speaker]?.clarity ?? 0;
-  if (!settings.reducedMotion && currentClarity > previousClarity) {
-    const opacity = [.98, .8, .34, 0];
-    $('#dialogue-root .portrait-haze')?.animate([{ opacity: opacity[previousClarity] }, { opacity: opacity[currentClarity] }], { duration: 1800, easing: 'ease-out' });
-  }
+
 }
 function renderRhythm() {
   if (!rhythm) return;
-  const el = $('#dialogue-root');
+  const el = $('#scene-dialogue-slot');
+  if (!el) return;
+  $('.scene-hotspot').hidden = true;
   if (!$('#practice-panel')) el.innerHTML = `<div class="dialogue-wrap"><section class="dialogue-box dialogue-no-portrait practice-box" id="practice-panel" role="dialog" aria-label="领队节拍练习"><div class="dialogue-body"><span class="dialogue-tag">领队练习 · 听见身后的脚步</span><div class="speaker-line"><span class="speaker-name">一步，一起。</span><span class="speaker-context">校园时间已暂停</span></div><p class="practice-instruction">光点经过中线时，按空格或轻触「迈一步」。走错也没关系。</p><div class="practice-track"><div class="practice-center"></div><div id="practice-dot"></div><span>左</span><span>右</span></div><div class="practice-bottom"><span id="practice-feedback">先听两拍，再一起迈步。</span><span id="practice-count">0 / 8</span></div><div class="practice-actions"><button class="primary-button" data-action="practice-tap">迈一步 <kbd>空格</kbd></button><button class="text-button" data-action="practice-skip">按自己的节奏继续</button></div></div></section></div>`;
   $('#practice-feedback').textContent = rhythm.feedback;
 }
@@ -192,7 +267,7 @@ function tapPractice() {
 function finishPractice(skipped = false) {
   if (!rhythm) return;
   const result = { hits: rhythm.hits.size, total: rhythm.total, skipped };
-  game.recordPractice?.(result); rhythm = null; dialogueSignature = ''; $('#dialogue-root').innerHTML = ''; save(); updateUI(true);
+  game.recordPractice?.(result); rhythm = null; dialogueSignature = ''; if ($('#scene-dialogue-slot')) $('#scene-dialogue-slot').innerHTML = ''; save(); updateUI(true);
 }
 
 function nearestInteraction() {
@@ -257,8 +332,8 @@ function updateUI(force = false) {
     $('#weather-icon').innerHTML = icon(state.minute >= 1140 ? 'moon' : 'sun');
     document.body.classList.toggle('paused', paused());
     $('#memory-dot').hidden = state.memories.length <= seenMemories;
-    $('#sound-icon').innerHTML = icon(settings.sound ? 'sound' : 'sound-off');
-    $('[data-action="sound"]').setAttribute('aria-label', settings.sound ? '关闭声音' : '开启声音');
+    $('#sound-icon').innerHTML = icon(settings.sound || settings.music ? 'sound' : 'sound-off');
+    $('[data-action="sound"]').setAttribute('aria-label', settings.sound || settings.music ? '关闭声音' : '开启声音');
     const next = game.getSchedule().find((event) => event.status === 'active' || event.status === 'available' || event.status === 'upcoming');
     $('#next-event-label').textContent = next ? `${time(next.start)} · ${next.title}` : state.minute >= 1140 ? '回宿舍，收好今天的日子' : '课余时间，去熟悉的地方走走';
     const button = $('#interact-button'); button.disabled = !nearest;
@@ -298,11 +373,15 @@ function frame(now) {
     }
     world.draw({ state: game.state, npcs: game.getNPCs(), characters: CHARACTERS, locations: LOCATIONS, route, elapsed: settings.reducedMotion ? 0 : now / 1000, hoverId, moving });
     updateUI();
+    updateEncounter(dt);
+    audio.setScene({ mode: titleVisible ? 'title' : rhythm ? 'practice' : stateMode(), minute: game.state.minute, locationId: encounter?.plan.locationId });
     if (toastUntil && now > toastUntil) { $('#notification').classList.remove('visible'); toastUntil = 0; }
     if (!titleVisible && now - lastSavedAt > 2500) { lastSavedAt = now; save(); }
     requestAnimationFrame(frame);
   } catch (error) { showError(error); }
 }
+
+function stateMode() { return game.state.ending ? 'ending' : game.state.dialogue ? 'encounter' : 'campus'; }
 
 function downloadMemories() {
   const lines = ['那个谁 · 九月，我们还不认识', '军训篇的回忆', '', ...game.getMemories().flatMap((memory) => [`九月${dates[memory.day - 1]}日 ${time(memory.minute)} · ${memory.title}`, memory.text, '']), '有些人，已经从「那个谁」变成了你认识的人。'];
@@ -323,17 +402,23 @@ document.addEventListener('click', (event) => {
   switch (action) {
     case 'start': begin(true); break;
     case 'continue': begin(false); break;
-    case 'home': save(); keys.clear(); route = []; overlay = null; rhythm = null; titleVisible = true; renderOverlay(); renderTitle(); break;
+    case 'home': save(); keys.clear(); route = []; overlay = null; rhythm = null; titleVisible = true; resetEncounter(); renderOverlay(); renderTitle(); break;
     case 'close': closeOverlay(); break;
     case 'new-confirm': showOverlay('new-confirm'); break;
+    case 'scene-next': nextSceneBeat(); break;
+    case 'scene-skip': nextSceneBeat(true); break;
+    case 'scene-observe': observeScene(); break;
+    case 'scene-history': if (encounter) { encounter.history = !encounter.history; renderSceneBeat(); } break;
     case 'choose': choose(Number(button.dataset.choice)); break;
-    case 'dismiss-dialogue': game.dismissDialogue(); save(); updateUI(true); break;
+    case 'dismiss-dialogue': if (rhythm) finishPractice(true); game.dismissDialogue(); save(); updateUI(true); break;
     case 'schedule-day': scheduleDay = Number(button.dataset.day); renderOverlay(); break;
     case 'journal-tab': journalTab = button.dataset.tab; renderOverlay(); break;
     case 'go': { const location = LOCATIONS.find((item) => item.id === button.dataset.place); closeOverlay(); if (location) { walkTo(location.x, location.y, location.name); world.focus(game.state.player.x, game.state.player.y); } break; }
     case 'interact': if (!paused()) interact(); break;
     case 'wait': if (!paused()) { game.waitUntilNext(); save(); updateUI(true); } break;
-    case 'sound': settings.sound = !settings.sound; if (settings.sound) { audio.init(); audio.click(); } else audio.suspend(); saveSettings(); if (overlay === 'settings') renderOverlay(); updateUI(true); break;
+    case 'sound': { const enabled = !(settings.sound || settings.music); settings.sound = enabled; settings.music = enabled; applySoundSettings(); break; }
+    case 'music': settings.music = !settings.music; applySoundSettings(); break;
+    case 'effects': settings.sound = !settings.sound; applySoundSettings(); break;
     case 'motion': settings.reducedMotion = !settings.reducedMotion; saveSettings(); renderOverlay(); break;
     case 'zoom-in': world.zoomBy(1.22); break;
     case 'zoom-out': world.zoomBy(1 / 1.22); break;
@@ -344,21 +429,30 @@ document.addEventListener('click', (event) => {
     case 'download': downloadMemories(); break;
   }
 });
+function applySoundSettings() {
+  audio.configure({ sound: settings.sound, music: settings.music, volume: settings.musicVolume });
+  audioStarted = true; audio.resume(); saveSettings();
+  if (overlay === 'settings') renderOverlay();
+  updateUI(true);
+}
+document.addEventListener('input', (event) => { if (event.target.id === 'music-volume') { settings.musicVolume = Number(event.target.value) / 100; audio.configure({ sound: settings.sound, music: settings.music, volume: settings.musicVolume }); saveSettings(); $('#music-volume-label').textContent = `${event.target.value}%`; } });
 document.addEventListener('change', (event) => { if (event.target.id === 'speed-select') { settings.speed = Number(event.target.value); saveSettings(); } });
 document.addEventListener('keydown', (event) => {
-  if (event.target.matches('input,select,textarea')) return;
   const key = event.key.toLowerCase();
+  if (key === 'escape') { event.preventDefault(); if (overlay) closeOverlay(); else if (rhythm) finishPractice(true); else if (game.state.dialogue) { game.dismissDialogue(); save(); updateUI(true); } else if (!titleVisible) showOverlay('settings'); return; }
+  // Focused buttons keep their native keyboard activation; scene shortcuts apply to the stage.
+  if ((key === ' ' || key === 'enter') && event.target.closest('button')) return;
   if (key === 'tab' && (overlay || game.state.ending && !titleVisible)) {
     const panel = $('#overlay-root [role="dialog"]');
-    const elements = panel?.querySelectorAll('button:not(:disabled),select,a[href]');
+    const elements = panel?.querySelectorAll('button:not(:disabled),input:not(:disabled),select:not(:disabled),textarea:not(:disabled),a[href]');
     if (elements?.length) { const first = elements[0], last = elements[elements.length - 1]; if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); } else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); } }
   }
+  if (event.target.matches('input,select,textarea')) return;
   if (['arrowup','arrowdown','arrowleft','arrowright','w','a','s','d',' '].includes(key)) event.preventDefault();
-  if (key === 'escape') { if (overlay) closeOverlay(); else if (rhythm) finishPractice(true); else if (game.state.dialogue) { game.dismissDialogue(); save(); updateUI(true); } else if (!titleVisible) showOverlay('settings'); return; }
   if (rhythm && (key === ' ' || key === 'enter')) { if (!event.repeat) tapPractice(); return; }
   if (game.state.dialogue && !overlay && !titleVisible) {
-    if (!event.repeat && /^[1-4]$/.test(key)) choose(Number(key) - 1);
-    else if (!event.repeat && (key === ' ' || key === 'enter') && game.state.dialogue.choices.length === 1) choose(0);
+    if (!event.repeat && /^[1-4]$/.test(key) && sceneChoicesReady()) choose(Number(key) - 1);
+    else if (!event.repeat && (key === ' ' || key === 'enter')) { event.preventDefault(); if (!sceneChoicesReady()) nextSceneBeat(); else if (game.state.dialogue.choices.length === 1) choose(0); }
     return;
   }
   if (paused()) return;
@@ -367,9 +461,9 @@ document.addEventListener('keydown', (event) => {
 });
 document.addEventListener('keyup', (event) => keys.delete(event.key.toLowerCase()));
 window.addEventListener('blur', () => { keys.clear(); });
-document.addEventListener('visibilitychange', () => { keys.clear(); lastFrame = performance.now(); if (document.hidden) { save(); audio.suspend(); } else audio.resume(); });
+document.addEventListener('visibilitychange', () => { keys.clear(); lastFrame = performance.now(); if (document.hidden) { save(); audio.suspend(); } else if (audioStarted) audio.resume(); });
 window.addEventListener('pagehide', save);
-window.addEventListener('resize', () => world.resize());
+window.addEventListener('resize', () => { world.resize(); sceneRenderer?.resize(); });
 
 let pointer = null;
 canvas.addEventListener('pointerdown', (event) => {
